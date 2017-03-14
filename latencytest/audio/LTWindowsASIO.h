@@ -1,9 +1,16 @@
 #ifndef _LTWINDOWSASIO_H_
 #define _LTWINDOWSASIO_H_
 
+#include <QStringList>
+
 #include <Windows.h>
 
+#include "host/asiodrivers.h"
+
 #include "LTAudioDevice.h"
+
+#define ASIO_MAX_DRIVERS 255
+#define ASIO_MAX_DRIVER_NAME_LEN 32
 
 class LTWindowsASIO
 {
@@ -13,14 +20,16 @@ public:
 
     virtual void Initialize(void);
 
-    uint32_t GetNumInitializedDevices() { return m_iNumInitializedDevs; }
+    uint32_t GetNumDevices() { return m_iNumDevs; }
 
     class LTWindowsASIODevice* GetDevice(int deviceID);
 
 private:
-    UINT m_iNumInitializedDevs;
-
+    UINT m_iNumDevs;
     class LTWindowsASIODevice* m_pDevs;
+    QStringList m_DriverNames;
+
+    AsioDrivers* m_pAsioDrivers;
 };
 
 class LTWindowsASIODevice : public LTAudioDevice
@@ -29,11 +38,10 @@ public:
     LTWindowsASIODevice();
     virtual ~LTWindowsASIODevice();
 
-    virtual bool Initialize(int deviceID);
+    virtual bool Initialize(int deviceID, QString name);
 
 private:
-    MIDIINCAPS m_InCaps;
-    MMRESULT m_Result;
+    
 };
 
 #endif /* _LTWINDOWSASIO_H_ */

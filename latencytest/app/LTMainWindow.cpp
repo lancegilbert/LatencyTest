@@ -26,6 +26,7 @@
 #include "LTApplication.h"
 
 #include "midi/LTWindowsMIDI.h"
+#include "audio/LTWindowsASIO.h"
 
 static QString sLTVersion("1.0.0");
 static const float sLTSettingsVersion = 1.0f;
@@ -52,12 +53,14 @@ LTMainWindow::LTMainWindow(LTApplication* pApp, QDateTime startupTime)
     mainWindowStatusBar->addPermanentWidget(m_pPermStatusLabel);
 
     m_pWindowsMIDI = new LTWindowsMIDI();
+    m_pWindowsASIO = new LTWindowsASIO();
 
     connect(midiInRefreshButton, SIGNAL(clicked()), this, SLOT(onRefreshMIDIInPushed()));
     connect(midiOutRefreshButton, SIGNAL(clicked()), this, SLOT(onRefreshMIDIOutPushed()));
 
     initializeMidiInPanel();
     initializeMidiOutPanel();
+    initializeAsioPanel();
 }
 
 LTMainWindow::~LTMainWindow()
@@ -169,6 +172,21 @@ void LTMainWindow::initializeMidiOutPanel(void)
     }
 
     midiOutTable->setSortingEnabled(true);
+}
+
+void LTMainWindow::initializeAsioPanel(void)
+{
+    m_pWindowsASIO->Initialize();
+
+    int numDevs = m_pWindowsASIO->GetNumDevices();
+
+    asioDeviceListComboBox->clear();
+
+    for (int idx = 0; idx < numDevs; idx++)
+    {
+        LTWindowsASIODevice* device = m_pWindowsASIO->GetDevice(idx);
+        asioDeviceListComboBox->addItem(device->GetName(), QVariant(device->GetDeviceID()));
+    }
 }
 
 void LTMainWindow::loadSettings(QSettings *settings, bool reset, bool propigateSharedSettings)

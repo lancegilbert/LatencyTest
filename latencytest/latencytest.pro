@@ -7,8 +7,11 @@ CONFIG -= flat
 
 QT = core gui widgets
 
-INCLUDEPATH += "$$_PRO_FILE_PWD_/"
-INCLUDEPATH += "$$_PRO_FILE_PWD_/external/ASIOSDK2/ASIOSDK2.3"
+INCLUDEPATH += 	"$$_PRO_FILE_PWD_/" \
+				"$$_PRO_FILE_PWD_/../external/asiosdk/ASIOSDK2.3" \
+				"$$_PRO_FILE_PWD_/../external/asiosdk/ASIOSDK2.3\common" \
+				"$$_PRO_FILE_PWD_/../external/asiosdk/ASIOSDK2.3\host" \
+				"$$_PRO_FILE_PWD_/../external/asiosdk/ASIOSDK2.3\host\pc"
 
 SOURCES += 	./app/LTApplication.cpp \
 			./app/LTMainWindow.cpp \

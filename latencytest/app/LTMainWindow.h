@@ -48,6 +48,7 @@ private:
 
     void initializeMidiInPanel(void);
     void initializeMidiOutPanel(void);
+    void initializeAsioPanel(void);
 
 public slots:
     void onClickHelpAbout(void);
@@ -92,6 +93,7 @@ private:
     LARGE_INTEGER m_iTicksPerSecond;
 
     class LTWindowsMIDI *m_pWindowsMIDI;
+    class LTWindowsASIO *m_pWindowsASIO;
  
 protected:
 	virtual bool event (QEvent* lEvent); 
