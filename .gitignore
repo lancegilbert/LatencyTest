@@ -46,3 +46,4 @@ CMakeLists.txt.user
 /debug/*
 /release/*
 *.VC.*
+/external/*
