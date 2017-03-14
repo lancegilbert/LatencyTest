@@ -106,7 +106,15 @@ void LTMainWindow::onAsioCurrentIndexChanged(int index)
         return;
     }
 
-
+    inputChannelsValueLabel->setText(tr("%1").arg(driver->GetInputChannels()));
+    outputChannelsValueLabel->setText(tr("%1").arg(driver->GetOutputChannels()));
+    minSizeValueLabel->setText(tr("%1").arg(driver->GetMinSize()));
+    maxSizeValueLabel->setText(tr("%1").arg(driver->GetMaxSize()));
+    preferredSizeValueLabel->setText(tr("%1").arg(driver->GetPreferredSize()));
+    granularityValueLabel->setText(tr("%1").arg(driver->GetGranularity()));
+    inputLatencyValueLabel->setText(tr("%1").arg(driver->GetInputLatency()));
+    outputLatencyValueLabel->setText(tr("%1").arg(driver->GetOutputLatency()));
+    sampleRateValueLabel->setText(tr("%1").arg(driver->GetSampleRate()));
 }
 
 void LTMainWindow::initializeMidiInPanel(void)
