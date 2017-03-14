@@ -1,0 +1,2 @@
+powershell -Command "Invoke-WebRequest http://www.steinberg.net/sdk_downloads/asiosdk2.3.zip -OutFile external/asiosdk/asiosdk2.3.zip"
+powershell -Command "Expand-Archive external/asiosdk/asiosdk2.3.zip -DestinationPath external/asiosdk/"

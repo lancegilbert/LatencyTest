@@ -48,3 +48,4 @@ CMakeLists.txt.user
 /**/release/*
 *.VC.*
 /external/ASIOSDK/ASIOSDK2.3/*
+external/asiosdk/asiosdk2.3.zip
