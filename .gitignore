@@ -45,3 +45,4 @@ CMakeLists.txt.user
 /bin/*
 /debug/*
 /release/*
+*.VC.*
