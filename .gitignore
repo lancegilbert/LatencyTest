@@ -42,8 +42,9 @@ CMakeLists.txt.user
 *.suo
 *.sln
 
-/bin/*
-/debug/*
-/release/*
+/**/bin/*
+/**/lib/*
+/**/debug/*
+/**/release/*
 *.VC.*
-/external/*
+/external/ASIOSDK/ASIOSDK2.3/*

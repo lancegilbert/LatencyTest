@@ -1,11 +1,14 @@
 TEMPLATE = app
-TARGET = LatencyTest
+TARGET = latencytest
 
 CONFIG += c++11
 
 CONFIG -= flat
 
 QT = core gui widgets
+
+INCLUDEPATH += "$$_PRO_FILE_PWD_/"
+INCLUDEPATH += "$$_PRO_FILE_PWD_/external/ASIOSDK2/ASIOSDK2.3"
 
 SOURCES += 	./app/LTApplication.cpp \
 			./app/LTMainWindow.cpp \
@@ -27,9 +30,11 @@ win32*:contains(QMAKE_HOST.arch, x86_64): {
 
     CONFIG(debug, debug|release) {
 		DESTDIR = ./bin/x64/debug
+		LIBS += ../external/asiosdk/lib/x64/asiosdkd.lib
     } 
     else {
     	DESTDIR = ./bin/x64/release
+    	LIBS += ../external/asiosdk/lib/x64/asiosdk.lib
     }
 }
 
