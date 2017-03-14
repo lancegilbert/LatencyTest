@@ -36,3 +36,12 @@ Makefile*
 # QtCtreator CMake
 CMakeLists.txt.user
 
+*.vcxproj
+*.vcxproj.*
+*.cbt
+*.suo
+*.sln
+
+/bin/*
+/debug/*
+/release/*

@@ -1,38 +1,33 @@
-#ifndef _LTWINDOWSMIDI_H_
-#define _LTWINDOWSMIDI_H_
+#ifndef _LTWINDOWSASIO_H_
+#define _LTWINDOWSASIO_H_
 
 #include <Windows.h>
 
-#include "LTMIDIDevice.h"
+#include "LTAudioDevice.h"
 
-class LTWindowsMIDI
+class LTWindowsASIO
 {
 public:
-    LTWindowsMIDI();
-    virtual ~LTWindowsMIDI();
+    LTWindowsASIO();
+    virtual ~LTWindowsASIO();
 
-    virtual void InitializeMIDIIn(void);
-    virtual void InitializeMIDIOut(void);
+    virtual void Initialize(void);
 
-    uint32_t GetNumInitializedInDevices() { return m_iNumInitializedInDevs; }
-    uint32_t GetNumInitializedOutDevices() { return m_iNumInitializedOutDevs; }
+    uint32_t GetNumInitializedDevices() { return m_iNumInitializedDevs; }
 
-    class LTWindowsMIDIInDevice* GetInDevice(int deviceID);
-    class LTWindowsMIDIOutDevice* GetOutDevice(int deviceID);
+    class LTWindowsASIODevice* GetDevice(int deviceID);
 
 private:
-    UINT m_iNumInitializedInDevs;
-    UINT m_iNumInitializedOutDevs;
+    UINT m_iNumInitializedDevs;
 
-    class LTWindowsMIDIInDevice* m_pInDevs;
-    class LTWindowsMIDIOutDevice* m_pOutDevs;
+    class LTWindowsASIODevice* m_pDevs;
 };
 
-class LTWindowsMIDIInDevice : public LTMIDIInDevice
+class LTWindowsASIODevice : public LTAudioDevice
 {
 public:
-    LTWindowsMIDIInDevice();
-    virtual ~LTWindowsMIDIInDevice();
+    LTWindowsASIODevice();
+    virtual ~LTWindowsASIODevice();
 
     virtual bool Initialize(int deviceID);
 
@@ -41,17 +36,4 @@ private:
     MMRESULT m_Result;
 };
 
-class LTWindowsMIDIOutDevice : public LTMIDIOutDevice
-{
-public:
-    LTWindowsMIDIOutDevice();
-    virtual ~LTWindowsMIDIOutDevice();
-
-    virtual bool Initialize(int deviceID);
-
-private:
-    MIDIOUTCAPS m_OutCaps;
-    MMRESULT m_Result;
-};
-
-#endif /* _LTWINDOWSMIDI_H_ */
+#endif /* _LTWINDOWSASIO_H_ */

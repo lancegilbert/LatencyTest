@@ -1,107 +1,65 @@
-#include "LTWindowsMIDI.h"
+#include "LTWindowsASIO.h"
 
-LTWindowsMIDI::LTWindowsMIDI()
-    : m_iNumInitializedInDevs(0)
-    , m_iNumInitializedOutDevs(0)
-    , m_pInDevs(nullptr)
-    , m_pOutDevs(nullptr)
+LTWindowsASIO::LTWindowsASIO()
+    : m_iNumInitializedDevs(0)
+    , m_pDevs(nullptr)
 {
 
 }
 
-LTWindowsMIDI::~LTWindowsMIDI()
+LTWindowsASIO::~LTWindowsASIO()
 {
-    if (m_pInDevs != nullptr)
+    if (m_pDevs != nullptr)
     {
-        delete[] m_pInDevs;
-        m_iNumInitializedInDevs = 0;
-    }
-
-    if (m_pOutDevs != nullptr)
-    {
-        delete[] m_pOutDevs;
-        m_iNumInitializedOutDevs = 0;
+        delete[] m_pDevs;
+        m_iNumInitializedDevs = 0;
     }
 }
 
-void LTWindowsMIDI::InitializeMIDIIn(void)
+void LTWindowsASIO::Initialize(void)
 {
-    if (m_pInDevs != nullptr)
+    if (m_pDevs != nullptr)
     {
-        delete[] m_pInDevs;
-        m_iNumInitializedInDevs = 0;
+        delete[] m_pDevs;
+        m_iNumInitializedDevs = 0;
     }
 
-    UINT numInDevs = midiInGetNumDevs();
+    UINT numDevs = midiInGetNumDevs();
 
-    if(numInDevs > 0)
+    if(numDevs > 0)
     {
-        m_pInDevs = new LTWindowsMIDIInDevice[numInDevs];
+        m_pDevs = new LTWindowsASIODevice[numDevs];
 
-        for (UINT idx = 0; idx < numInDevs; idx++)
+        for (UINT idx = 0; idx < numDevs; idx++)
         {
-            m_pInDevs[idx].Initialize(idx);
-            m_iNumInitializedInDevs++;
+            m_pDevs[idx].Initialize(idx);
+            m_iNumInitializedDevs++;
         }
     }
 }
 
-void LTWindowsMIDI::InitializeMIDIOut(void)
+LTWindowsASIODevice* LTWindowsASIO::GetDevice(int deviceID)
 {
-    if (m_pOutDevs != nullptr)
-    {
-        delete[] m_pOutDevs;
-        m_iNumInitializedOutDevs = 0;
-    }
-
-    UINT numOutDevs = midiOutGetNumDevs();
-
-    if (numOutDevs > 0)
-    {
-        m_pOutDevs = new LTWindowsMIDIOutDevice[numOutDevs];
-
-        for (UINT idx = 0; idx < numOutDevs; idx++)
-        {
-            if (m_pOutDevs[idx].Initialize(idx))
-            {
-                m_iNumInitializedOutDevs++;
-            }
-        }
-    }
-}
-
-LTWindowsMIDIInDevice* LTWindowsMIDI::GetInDevice(int deviceID)
-{
-    if (m_pInDevs == nullptr || m_iNumInitializedInDevs == 0 || deviceID >= m_iNumInitializedInDevs)
+    if (m_pDevs == nullptr || m_iNumInitializedDevs == 0 || deviceID >= m_iNumInitializedDevs)
     {
         return nullptr;
     }
 
-    return &m_pInDevs[deviceID];
+    return &m_pDevs[deviceID];
 }
 
-LTWindowsMIDIOutDevice* LTWindowsMIDI::GetOutDevice(int deviceID)
-{
-    if (m_pOutDevs == nullptr || m_iNumInitializedOutDevs == 0 || deviceID >= m_iNumInitializedOutDevs)
-    {
-        return nullptr;
-    }
-
-    return &m_pOutDevs[deviceID];
-}
-
-LTWindowsMIDIInDevice::LTWindowsMIDIInDevice()
-    : LTMIDIInDevice()
+LTWindowsASIODevice::LTWindowsASIODevice()
+    : LTAudioDevice()
 {
 
 }
 
-LTWindowsMIDIInDevice::~LTWindowsMIDIInDevice()
+LTWindowsASIODevice::~LTWindowsASIODevice()
 {
 
 }
 
-bool LTWindowsMIDIInDevice::Initialize(int deviceID)
+bool LTWindowsASIODevice::Initialize(int deviceID)
 {
     m_Result = midiInGetDevCaps(deviceID, &m_InCaps, sizeof(MIDIINCAPS));
 
@@ -113,32 +71,5 @@ bool LTWindowsMIDIInDevice::Initialize(int deviceID)
     QString name;
     name = QString::fromWCharArray(m_InCaps.szPname);
 
-    return LTMIDIInDevice::Initialize(deviceID, m_InCaps.wMid, m_InCaps.wPid, m_InCaps.vDriverVersion, name);
+    return LTAudioDevice::Initialize(deviceID, m_InCaps.wMid, m_InCaps.wPid, m_InCaps.vDriverVersion, name);
 }
-
-LTWindowsMIDIOutDevice::LTWindowsMIDIOutDevice()
-    : LTMIDIOutDevice()
-{
-
-}
-
-LTWindowsMIDIOutDevice::~LTWindowsMIDIOutDevice()
-{
-
-}
-
-bool LTWindowsMIDIOutDevice::Initialize(int deviceID)
-{
-    m_Result = midiOutGetDevCaps(deviceID, &m_OutCaps, sizeof(MIDIOUTCAPS));
-
-    if (m_Result != MMSYSERR_NOERROR)
-    {
-        return false;
-    }
-
-    QString name;
-    name = QString::fromWCharArray(m_OutCaps.szPname);
-
-    return LTMIDIOutDevice::Initialize(deviceID, m_OutCaps.wMid, m_OutCaps.wPid, m_OutCaps.vDriverVersion, name, m_OutCaps.wTechnology, m_OutCaps.wVoices, m_OutCaps.wNotes, m_OutCaps.wChannelMask);
-}
-

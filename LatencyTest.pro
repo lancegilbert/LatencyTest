@@ -1,5 +1,5 @@
 TEMPLATE = app
-TARGET = RTMidi-LatencyTest
+TARGET = LatencyTest
 
 CONFIG += c++11
 
