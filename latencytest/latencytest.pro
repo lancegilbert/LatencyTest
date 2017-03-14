@@ -17,14 +17,14 @@ SOURCES += 	./app/LTApplication.cpp \
 			./app/LTMainWindow.cpp \
 			./midi/LTWindowsMIDI.cpp \
 			./midi/LTMIDIDevice.cpp \
-			./audio/LTAudioDevice.cpp \
+			./audio/LTAudioDriver.cpp \
 			./audio/LTWindowsASIO.cpp
 
 HEADERS += 	./app/LTApplication.h \
 			./app/LTMainWindow.h \
 			./midi/LTWindowsMIDI.h\
 			./midi/LTMIDIDevice.h \
-			./audio/LTAudioDevice.h \
+			./audio/LTAudioDriver.h \
 			./audio/LTWindowsASIO.h
 
 win32*:contains(QMAKE_HOST.arch, x86_64): {

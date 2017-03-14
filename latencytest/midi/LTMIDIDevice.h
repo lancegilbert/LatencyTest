@@ -6,8 +6,8 @@
 class LTMIDIDevice
 {
 public:
-    LTMIDIDevice();
-    virtual ~LTMIDIDevice();
+    LTMIDIDevice(void);
+    virtual ~LTMIDIDevice(void);
 
     virtual bool Initialize(int deviceID, int MID, int PID, int driverVersion, QString name);
 
@@ -29,8 +29,8 @@ protected:
 class LTMIDIInDevice : public LTMIDIDevice
 {
 public:
-    LTMIDIInDevice();
-    virtual ~LTMIDIInDevice();
+    LTMIDIInDevice(void);
+    virtual ~LTMIDIInDevice(void);
 
     virtual bool Initialize(int deviceID, int MID, int PID, int driverVersion, QString name);
 
@@ -40,8 +40,8 @@ protected:
 class LTMIDIOutDevice : public LTMIDIDevice
 {
 public:
-    LTMIDIOutDevice();
-    virtual ~LTMIDIOutDevice();
+    LTMIDIOutDevice(void);
+    virtual ~LTMIDIOutDevice(void);
 
     virtual bool Initialize(int deviceID, int MID, int PID, int driverVersion, QString name, int technology, int voices, int notes, int channelMask);
 

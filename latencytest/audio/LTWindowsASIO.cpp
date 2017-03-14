@@ -1,8 +1,10 @@
 #include "LTWindowsASIO.h"
 
+#include "iasiodrv.h"
 
+extern IASIO *theAsioDriver;
 
-LTWindowsASIO::LTWindowsASIO()
+LTWindowsASIO::LTWindowsASIO(void)
     : m_iNumDevs(0)
     , m_pDevs(nullptr)
     , m_pAsioDrivers(nullptr)
@@ -10,7 +12,7 @@ LTWindowsASIO::LTWindowsASIO()
 
 }
 
-LTWindowsASIO::~LTWindowsASIO()
+LTWindowsASIO::~LTWindowsASIO(void)
 {
     if (m_pDevs != nullptr)
     {
@@ -37,7 +39,10 @@ void LTWindowsASIO::Initialize(void)
 
     m_DriverNames.clear();
 
-    m_pAsioDrivers = new AsioDrivers();
+    if (m_pAsioDrivers == nullptr)
+    {
+        m_pAsioDrivers = new AsioDrivers();
+    }
 
     char* asioDriverNames[ASIO_MAX_DRIVERS];
 
@@ -63,38 +68,104 @@ void LTWindowsASIO::Initialize(void)
 
     if(numDevs > 0)
     {
-        m_pDevs = new LTWindowsASIODevice[numDevs];
+        m_pDevs = new LTWindowsASIODriver[numDevs];
 
         for (UINT idx = 0; idx < numDevs; idx++)
         {
-            m_pDevs[idx].Initialize(idx, m_DriverNames.at(idx));
+            m_pDevs[idx].Initialize(m_pAsioDrivers, idx, m_DriverNames.at(idx));
             m_iNumDevs++;
         }
     }
 }
 
-LTWindowsASIODevice* LTWindowsASIO::GetDevice(int deviceID)
+LTWindowsASIODriver* LTWindowsASIO::GetDriver(int driverID)
 {
-    if (m_pDevs == nullptr || m_iNumDevs == 0 || deviceID >= m_iNumDevs)
+    if (m_pDevs == nullptr || m_iNumDevs == 0 || driverID >= m_iNumDevs)
     {
         return nullptr;
     }
 
-    return &m_pDevs[deviceID];
+    return &m_pDevs[driverID];
 }
 
-LTWindowsASIODevice::LTWindowsASIODevice()
-    : LTAudioDevice()
+LTWindowsASIODriver::LTWindowsASIODriver()
+    : LTAudioDriver()
+    , m_pAsioDrivers(nullptr)
+    , m_bLoaded(false)
 {
 
 }
 
-LTWindowsASIODevice::~LTWindowsASIODevice()
+LTWindowsASIODriver::~LTWindowsASIODriver(void)
 {
 
 }
 
-bool LTWindowsASIODevice::Initialize(int deviceID, QString name)
+bool LTWindowsASIODriver::Initialize(AsioDrivers* asioDrivers, int DriverID, QString name)
 {
-    return LTAudioDevice::Initialize(deviceID, name);
+    m_pAsioDrivers = asioDrivers;
+
+    return LTAudioDriver::Initialize(DriverID, name);
+}
+
+bool LTWindowsASIODriver::Load(void)
+{
+    m_pAsioDrivers->removeCurrentDriver();
+
+    m_bLoaded = m_pAsioDrivers->loadDriver(GetName().toLatin1().data());
+
+    if (!m_bLoaded)
+    {
+        return m_bLoaded;
+    }
+
+    ASIODriverInfo driverInfo;
+
+    if (ASIOInit(&driverInfo) != ASE_OK)
+    {
+        m_bLoaded = false;
+        return m_bLoaded;
+    }
+
+    long inputChannels;
+    long outputChannels;
+
+    if (ASIOGetChannels(&inputChannels, &outputChannels) != ASE_OK)
+    {
+        m_bLoaded = false;
+        return m_bLoaded;
+    }
+
+    long minSize;
+    long maxSize;
+    long preferredSize;
+    long granularity;
+
+    if (ASIOGetBufferSize(&minSize, &maxSize, &preferredSize, &granularity) != ASE_OK)
+    {
+        m_bLoaded = false;
+        return m_bLoaded;
+    }
+
+    long inputLatency;
+    long outputLatency;
+
+    // It is possible that there will not be valid latencies until after ASIO buffer creation
+    if( ASIOGetLatencies(&inputLatency, &outputLatency) != ASE_OK)
+    {
+        m_bLoaded = false;
+        return m_bLoaded;
+    }
+
+    double sampleRate;
+
+    if (ASIOGetSampleRate(&sampleRate) != ASE_OK)
+    {
+        m_bLoaded = false;
+        return m_bLoaded;
+    }
+
+    Open(inputChannels, outputChannels, minSize, maxSize, preferredSize, granularity, inputLatency, outputLatency, sampleRate);
+
+    return m_bLoaded;
 }

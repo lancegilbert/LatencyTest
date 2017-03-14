@@ -57,13 +57,14 @@ LTMainWindow::LTMainWindow(LTApplication* pApp, QDateTime startupTime)
 
     connect(midiInRefreshButton, SIGNAL(clicked()), this, SLOT(onRefreshMIDIInPushed()));
     connect(midiOutRefreshButton, SIGNAL(clicked()), this, SLOT(onRefreshMIDIOutPushed()));
+    connect(asioDeviceListComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onAsioCurrentIndexChanged(int)));
 
     initializeMidiInPanel();
     initializeMidiOutPanel();
     initializeAsioPanel();
 }
 
-LTMainWindow::~LTMainWindow()
+LTMainWindow::~LTMainWindow(void)
 {
     if(m_pPermStatusLabel)
     {
@@ -80,6 +81,32 @@ void LTMainWindow::onRefreshMIDIInPushed(void)
 void LTMainWindow::onRefreshMIDIOutPushed(void)
 {
     initializeMidiOutPanel();
+}
+
+void LTMainWindow::onAsioCurrentIndexChanged(int index)
+{
+    int numDrivers = m_pWindowsASIO->GetNumDrivers();
+
+    if (numDrivers <= index)
+    {
+        return;
+    }
+
+    LTWindowsASIODriver* driver = m_pWindowsASIO->GetDriver(index);
+
+    if (driver == nullptr)
+    {
+        return;
+    }
+
+    bool loaded = driver->Load();
+
+    if (!loaded)
+    {
+        return;
+    }
+
+
 }
 
 void LTMainWindow::initializeMidiInPanel(void)
@@ -178,14 +205,14 @@ void LTMainWindow::initializeAsioPanel(void)
 {
     m_pWindowsASIO->Initialize();
 
-    int numDevs = m_pWindowsASIO->GetNumDevices();
+    int numDrivers = m_pWindowsASIO->GetNumDrivers();
 
     asioDeviceListComboBox->clear();
 
-    for (int idx = 0; idx < numDevs; idx++)
+    for (int idx = 0; idx < numDrivers; idx++)
     {
-        LTWindowsASIODevice* device = m_pWindowsASIO->GetDevice(idx);
-        asioDeviceListComboBox->addItem(device->GetName(), QVariant(device->GetDeviceID()));
+        LTWindowsASIODriver* driver = m_pWindowsASIO->GetDriver(idx);
+        asioDeviceListComboBox->addItem(driver->GetName(), QVariant(driver->GetDriverID()));
     }
 }
 
@@ -325,47 +352,14 @@ void LTMainWindow::onAppRestoreSettings(void)
     loadSettings(settings, true, false);
 }
 
-#if defined(__APPLE__)
-#include <mach/mach.h>
-#include <mach/mach_time.h>
-#include <unistd.h>
-uint64_t GetTimeInNanoseconds(uint64_t elapsed)
-{
-    uint64_t        elapsedNano;
-    static mach_timebase_info_data_t    sTimebaseInfo;
-    
-    // Convert to nanoseconds.
-    
-    // If this is the first time we've run, get the timebase.
-    // We can use denom == 0 to indicate that sTimebaseInfo is
-    // uninitialised because it makes no sense to have a zero
-    // denominator is a fraction.
-    
-    if ( sTimebaseInfo.denom == 0 ) {
-        (void) mach_timebase_info(&sTimebaseInfo);
-    }
-    
-    // Do the maths. We hope that the multiplication doesn't
-    // overflow; the price you pay for working in fixed point.
-    
-    elapsedNano = elapsed * sTimebaseInfo.numer / sTimebaseInfo.denom;
-    
-    return elapsedNano;
-}
-#endif
 
-void LTMainWindow::initTimecounter()
+void LTMainWindow::initTimecounter(void)
 {
-#if defined(_WIN32)
-        QueryPerformanceFrequency(&m_iTicksPerSecond);
-        QueryPerformanceCounter(&m_iTimeAtStart);
-#elif defined(__APPLE__)
-    m_iTicksPerSecond = 1000000000LL;
-    m_iTimeAtStart = mach_absolute_time();
-#endif
+    QueryPerformanceFrequency(&m_iTicksPerSecond);
+    QueryPerformanceCounter(&m_iTimeAtStart);
 }
 
-float LTMainWindow::getTimeInSeconds()
+float LTMainWindow::getTimeInSeconds(void)
 {
     LARGE_INTEGER curTime;
     // This is the number of clock ticks since start
@@ -417,7 +411,7 @@ void LTMainWindow::updateFps(void)
     }
 }
 
-float LTMainWindow::getPrevFps()
+float LTMainWindow::getPrevFps(void)
 {
     // CHRISNOTE: 4 Frame Moving Average
     float fpsTotal = 0.0f;

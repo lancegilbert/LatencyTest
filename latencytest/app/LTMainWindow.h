@@ -25,7 +25,7 @@ class LTMainWindow : public QMainWindow, public Ui_LTMainWindow
     
 public:
     LTMainWindow(LTApplication* pApp, QDateTime startupTime);
-    virtual ~LTMainWindow();
+    virtual ~LTMainWindow(void);
 
     QString getLoadPath(void) { return m_sStartingLoadPath; }
     void setLoadPath(QString path) { m_sStartingLoadPath = path; }
@@ -33,8 +33,8 @@ public:
     void updateFps(void);
     void updateStatusBar(void);
     float getTimeInSeconds();
-    float getAvgFps() { return m_fAvgFps; }
-    float getPrevFps();
+    float getAvgFps(void) { return m_fAvgFps; }
+    float getPrevFps(void);
     float getLastFrameDelta() { return m_fFrameDeltaInSeconds; }
  
 	void saveSettings(QSettings *settings, bool saveAutoSettings, bool propigateSharedSettings);
@@ -44,7 +44,7 @@ public:
     bool getLoadComplete(void) { return m_bInitialPrefsLoadComplete; }
 
 private:
-    void initTimecounter();
+    void initTimecounter(void);
 
     void initializeMidiInPanel(void);
     void initializeMidiOutPanel(void);
@@ -59,6 +59,7 @@ public slots:
 
     void onRefreshMIDIInPushed(void);
     void onRefreshMIDIOutPushed(void);
+    void onAsioCurrentIndexChanged(int index);
 
 public:
 

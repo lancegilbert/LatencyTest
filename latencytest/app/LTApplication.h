@@ -15,9 +15,9 @@ class LTApplication : public QApplication
 
 public:
     LTApplication(int& argc, char *argv[], QString appName);
-    virtual ~LTApplication();
+    virtual ~LTApplication(void);
 
-    void start();
+    void start(void);
     virtual void setupMainWindow(void);
 
 	bool startupFailed(void) { return m_bStartupFailed; }

@@ -8,14 +8,14 @@
 class LTWindowsMIDI
 {
 public:
-    LTWindowsMIDI();
-    virtual ~LTWindowsMIDI();
+    LTWindowsMIDI(void);
+    virtual ~LTWindowsMIDI(void);
 
     virtual void InitializeMIDIIn(void);
     virtual void InitializeMIDIOut(void);
 
-    uint32_t GetNumInitializedInDevices() { return m_iNumInitializedInDevs; }
-    uint32_t GetNumInitializedOutDevices() { return m_iNumInitializedOutDevs; }
+    uint32_t GetNumInitializedInDevices(void) { return m_iNumInitializedInDevs; }
+    uint32_t GetNumInitializedOutDevices(void) { return m_iNumInitializedOutDevs; }
 
     class LTWindowsMIDIInDevice* GetInDevice(int deviceID);
     class LTWindowsMIDIOutDevice* GetOutDevice(int deviceID);
@@ -31,8 +31,8 @@ private:
 class LTWindowsMIDIInDevice : public LTMIDIInDevice
 {
 public:
-    LTWindowsMIDIInDevice();
-    virtual ~LTWindowsMIDIInDevice();
+    LTWindowsMIDIInDevice(void);
+    virtual ~LTWindowsMIDIInDevice(void);
 
     virtual bool Initialize(int deviceID);
 
@@ -44,8 +44,8 @@ private:
 class LTWindowsMIDIOutDevice : public LTMIDIOutDevice
 {
 public:
-    LTWindowsMIDIOutDevice();
-    virtual ~LTWindowsMIDIOutDevice();
+    LTWindowsMIDIOutDevice(void);
+    virtual ~LTWindowsMIDIOutDevice(void);
 
     virtual bool Initialize(int deviceID);
 

@@ -29,12 +29,12 @@ LTApplication::LTApplication(int& argc, char *argv[], QString appName)
     QCoreApplication::setApplicationName(appName);
 }
 
-LTApplication::~LTApplication()
+LTApplication::~LTApplication(void)
 {
     disconnect();
 }
 
-void LTApplication::start()
+void LTApplication::start(void)
 {
 #if 0
 	if(!loadStyleSheet("./styles/dark.qss"))
