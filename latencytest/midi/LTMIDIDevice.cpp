@@ -1,47 +1,41 @@
 #include "LTMIDIDevice.h"
 
 LTMIDI::LTMIDI()
-    : m_iNumInitializedInDevs(0)
-    , m_iNumInitializedOutDevs(0)
-    , m_pInDevs(nullptr)
-    , m_pOutDevs(nullptr)
 {
 
 }
 
 LTMIDI::~LTMIDI()
 {
-    if (m_pInDevs != nullptr)
+    while (m_InDevs.count() > 0)
     {
-        delete[] m_pInDevs;
-        m_iNumInitializedInDevs = 0;
+        delete m_InDevs.takeLast();
     }
 
-    if (m_pOutDevs != nullptr)
+    while (m_OutDevs.count() > 0)
     {
-        delete[] m_pOutDevs;
-        m_iNumInitializedOutDevs = 0;
+        delete m_OutDevs.takeLast();
     }
 }
 
-LTMIDIDevice* LTMIDI::GetInDevice(int deviceID)
+LTMIDIInDevice* LTMIDI::GetInDevice(int deviceID)
 {
-    if (m_pInDevs == nullptr || m_iNumInitializedInDevs == 0 || deviceID >= m_iNumInitializedInDevs)
+    if (m_InDevs.count() <= deviceID)
     {
         return nullptr;
     }
 
-    return &m_pInDevs[deviceID];
+    return m_InDevs.at(deviceID);
 }
 
-LTMIDIDevice* LTMIDI::GetOutDevice(int deviceID)
+LTMIDIOutDevice* LTMIDI::GetOutDevice(int deviceID)
 {
-    if (m_pOutDevs == nullptr || m_iNumInitializedOutDevs == 0 || deviceID >= m_iNumInitializedOutDevs)
+    if (m_OutDevs.count() <= deviceID)
     {
         return nullptr;
     }
 
-    return &m_pOutDevs[deviceID];
+    return m_OutDevs.at(deviceID);
 }
 
 LTMIDIDevice::LTMIDIDevice()
@@ -109,4 +103,44 @@ bool LTMIDIOutDevice::Initialize(int deviceID, int MID, int PID, int driverVersi
     m_iChannelMask = channelMask;
 
     return LTMIDIDevice::Initialize(deviceID, MID, PID, driverVersion, name);
+}
+
+bool LTMIDIOutDevice::TriggerMIDINote(uint8_t channel, LTMIDI_Notes Note, uint8_t octave, uint8_t velocity)
+{
+    if (!SendMIDINote(LTMIDI_Command_NoteOn, channel, Note, octave, velocity))
+    {
+        return false;
+    }
+
+    // todo: Add wait logic here once callbacks are in place
+
+    return SendMIDINote(LTMIDI_Command_NoteOff, channel, Note, octave, velocity);
+}
+
+bool LTMIDIOutDevice::SendMIDINote(LTMIDI_Commands command, uint8_t channel, LTMIDI_Notes note, uint8_t octave, uint8_t velocity)
+{
+    uint16_t low = 0;
+    uint16_t high = 0;
+
+    if (command == LTMIDI_Command_NoteOn)
+    {
+        // Mask to compliant velocity range (0-127)
+        velocity &= 0x7F;
+
+        high = velocity;
+    }
+
+    uint8_t filteredCommand = (command & 0x000F);
+
+    // Transpose channel (1-16 -> 0-15) and mask compliant channel range (0-15)
+    channel = ((channel - 1) & 0x0F);
+    
+    uint8_t transposedNote = note + (LTMIDI_Note_C * octave);
+
+    // Mask to compliant note range (0-127)
+    transposedNote &= 0x7F;
+
+    low = (channel) | (filteredCommand << 4) | (transposedNote << 8);
+
+    return SendMIDIMessage(low, high);
 }

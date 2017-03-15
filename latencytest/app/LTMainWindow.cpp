@@ -62,6 +62,7 @@ LTMainWindow::LTMainWindow(LTApplication* pApp, QDateTime startupTime)
     connect(midiInRefreshButton, SIGNAL(clicked()), this, SLOT(onRefreshMIDIInPushed()));
     connect(midiOutRefreshButton, SIGNAL(clicked()), this, SLOT(onRefreshMIDIOutPushed()));
     connect(asioDeviceListComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onAsioCurrentIndexChanged(int)));
+    connect(measureLatencyButton, SIGNAL(clicked()), this, SLOT(onLatencyTestMeasurePushed()));
 
     initializeMidiInPanel();
     initializeMidiOutPanel();
@@ -134,12 +135,11 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
 
         if (curRow->enableCheckBox->isChecked())
         {
-            
-            //latencyTestGridLayout->removeWidget(curRow->enableCheckBox);
-            //latencyTestGridLayout->removeWidget(curRow->midiOutLabel);
-            //latencyTestGridLayout->removeWidget(curRow->midiChannelSpinBox);
+            LTMIDIOutDevice* device = m_pWindowsMIDI->GetOutDevice(idx);
+            device->TriggerMIDINote(curRow->midiChannelSpinBox->value(), LTMIDI_Note_C, 3, 0x40);
+
             //latencyTestGridLayout->removeWidget(curRow->asioDriverLabel);
-            //latencyTestGridLayout->removeWidget(curRow->asioOutputChannelSpinBox);
+            //latencyTestGridLayout->removeWidget(curRow->asioInputChannelSpinBox);
             //latencyTestGridLayout->removeWidget(curRow->latencyLabel);
         }
     }
@@ -157,7 +157,7 @@ void LTMainWindow::initializeMidiInPanel(void)
 
     for(int idx = 0; idx < numInDevs; idx++)
     {
-        LTWindowsMIDIInDevice* device = m_pWindowsMIDI->GetInDevice(idx);
+        LTMIDIInDevice* device = m_pWindowsMIDI->GetInDevice(idx);
 
         if(device != nullptr)
         {
@@ -197,7 +197,7 @@ void LTMainWindow::initializeMidiOutPanel(void)
 
     for (int idx = 0; idx < numOutDevs; idx++)
     {
-        LTWindowsMIDIOutDevice* device = m_pWindowsMIDI->GetOutDevice(idx);
+        LTMIDIOutDevice* device = m_pWindowsMIDI->GetOutDevice(idx);
 
         if (device != nullptr)
         {
@@ -263,7 +263,7 @@ void LTMainWindow::initializeLatencyTestPanel(void)
         latencyTestGridLayout->removeWidget(curRow->midiOutLabel);
         latencyTestGridLayout->removeWidget(curRow->midiChannelSpinBox);
         latencyTestGridLayout->removeWidget(curRow->asioDriverLabel);
-        latencyTestGridLayout->removeWidget(curRow->asioOutputChannelSpinBox);
+        latencyTestGridLayout->removeWidget(curRow->asioInputChannelSpinBox);
         latencyTestGridLayout->removeWidget(curRow->latencyLabel);
         curRow->deleteLater();
     }
@@ -272,7 +272,7 @@ void LTMainWindow::initializeLatencyTestPanel(void)
 
     for (int idx = 0; idx < numOutDevs; idx++)
     {
-        LTWindowsMIDIOutDevice* device = m_pWindowsMIDI->GetOutDevice(idx);
+        LTMIDIOutDevice* device = m_pWindowsMIDI->GetOutDevice(idx);
 
         if (device != nullptr)
         {
@@ -285,22 +285,22 @@ void LTMainWindow::initializeLatencyTestPanel(void)
             {
                 newRow->asioDriverLabel->setText("No ASIO Driver Selected");
                 newRow->enableCheckBox->setEnabled(false);
-                newRow->asioOutputChannelSpinBox->setEnabled(false);
-                newRow->asioOutputChannelSpinBox->setMaximum(0);
+                newRow->asioInputChannelSpinBox->setEnabled(false);
+                newRow->asioInputChannelSpinBox->setMaximum(0);
             }
             else
             {
                 newRow->asioDriverLabel->setText(m_pCurWindowsASIODriver->GetName());
                 newRow->enableCheckBox->setEnabled(true);
-                newRow->asioOutputChannelSpinBox->setEnabled(true);
-                newRow->asioOutputChannelSpinBox->setMaximum(m_pCurWindowsASIODriver->GetNumOutputChannels());
+                newRow->asioInputChannelSpinBox->setEnabled(true);
+                newRow->asioInputChannelSpinBox->setMaximum(m_pCurWindowsASIODriver->GetNumInputChannels());
             }
 
             latencyTestGridLayout->addWidget(newRow->enableCheckBox, idx + 1, 1);
             latencyTestGridLayout->addWidget(newRow->midiOutLabel, idx + 1, 2);
             latencyTestGridLayout->addWidget(newRow->midiChannelSpinBox, idx + 1, 3);
             latencyTestGridLayout->addWidget(newRow->asioDriverLabel, idx + 1, 4);
-            latencyTestGridLayout->addWidget(newRow->asioOutputChannelSpinBox, idx + 1, 5);
+            latencyTestGridLayout->addWidget(newRow->asioInputChannelSpinBox, idx + 1, 5);
             latencyTestGridLayout->addWidget(newRow->latencyLabel, idx + 1, 6);
         }
     }

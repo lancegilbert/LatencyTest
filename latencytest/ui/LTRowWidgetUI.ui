@@ -91,7 +91,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QSpinBox" name="asioOutputChannelSpinBox">
+    <widget class="QSpinBox" name="asioInputChannelSpinBox">
      <property name="enabled">
       <bool>false</bool>
      </property>

@@ -13,53 +13,49 @@ LTWindowsMIDI::~LTWindowsMIDI()
 
 void LTWindowsMIDI::InitializeMIDIIn(void)
 {
-    if (m_pInDevs != nullptr)
+    while (m_InDevs.count() > 0)
     {
-        delete[] m_pInDevs;
-        m_pInDevs = nullptr;
-        m_iNumInitializedInDevs = 0;
+        delete m_InDevs.takeLast();
     }
 
     UINT numInDevs = midiInGetNumDevs();
 
-    if(numInDevs > 0)
+    for (UINT idx = 0; idx < numInDevs; idx++)
     {
-        LTWindowsMIDIInDevice* inDevs = new LTWindowsMIDIInDevice[numInDevs];
+        LTWindowsMIDIInDevice* inDev = new LTWindowsMIDIInDevice();
 
-        for (UINT idx = 0; idx < numInDevs; idx++)
+        if (!inDev->Initialize(idx))
         {
-            inDevs[idx].Initialize(idx);
-            m_iNumInitializedInDevs++;
+            delete inDev;
         }
-
-        m_pInDevs = inDevs;
+        else
+        {
+            m_InDevs.append(inDev);
+        }
     }
 }
 
 void LTWindowsMIDI::InitializeMIDIOut(void)
 {
-    if (m_pOutDevs != nullptr)
+    while (m_InDevs.count() > 0)
     {
-        delete[] m_pOutDevs;
-        m_pOutDevs = nullptr;
-        m_iNumInitializedOutDevs = 0;
+        delete m_InDevs.takeLast();
     }
 
     UINT numOutDevs = midiOutGetNumDevs();
 
-    if (numOutDevs > 0)
+    for (UINT idx = 0; idx < numOutDevs; idx++)
     {
-        LTWindowsMIDIInDevice* outDevs = new LTWindowsMIDIInDevice[numOutDevs];
+        LTWindowsMIDIOutDevice* outDev = new LTWindowsMIDIOutDevice();
 
-        for (UINT idx = 0; idx < numOutDevs; idx++)
+        if (!outDev->Initialize(idx))
         {
-            if (outDevs[idx].Initialize(idx))
-            {
-                m_iNumInitializedOutDevs++;
-            }
+            delete outDev;
         }
-
-        m_pOutDevs = outDevs;
+        else
+        {
+            m_OutDevs.append(outDev);
+        }
     }
 }
 
@@ -91,6 +87,8 @@ bool LTWindowsMIDIInDevice::Initialize(int deviceID)
 
 LTWindowsMIDIOutDevice::LTWindowsMIDIOutDevice()
     : LTMIDIOutDevice()
+    , m_bDeviceOpened(false)
+    , m_bStreamOpened(false)
 {
 
 }
@@ -115,3 +113,131 @@ bool LTWindowsMIDIOutDevice::Initialize(int deviceID)
     return LTMIDIOutDevice::Initialize(deviceID, m_OutCaps.wMid, m_OutCaps.wPid, m_OutCaps.vDriverVersion, name, m_OutCaps.wTechnology, m_OutCaps.wVoices, m_OutCaps.wNotes, m_OutCaps.wChannelMask);
 }
 
+bool LTWindowsMIDIOutDevice::SendMIDIMessage(uint16_t low, uint16_t high)
+{
+    if (!OpenDevice())
+    {
+        return false;
+    }
+
+    DWORD message = (low | (high << 16));
+    
+    MMRESULT result = midiOutShortMsg(m_DeviceHandle, message);
+
+    if (result != MMSYSERR_NOERROR)
+    {
+        CloseDevice();
+        return false;
+    }
+
+    CloseDevice();
+
+    return true;
+}
+
+bool LTWindowsMIDIOutDevice::SendMIDIStream(QByteArray buffer)
+{
+    return false;
+
+// Not fully implemented yet
+#if 0
+    if (!OpenDevice())
+    {
+        return false;
+    }
+
+    MIDIHDR midiHeader;
+
+    midiHeader.lpData = buffer.data_ptr()->data();
+    midiHeader.dwBufferLength = buffer.data_ptr()->size;
+    midiHeader.dwBytesRecorded = buffer.data_ptr()->size;
+    midiHeader.dwUser = NULL;
+    midiHeader.dwFlags = 0;
+
+
+    MMRESULT result = midiOutPrepareHeader(m_DeviceHandle, &midiHeader, sizeof(MIDIHDR));
+
+    if (result != MMSYSERR_NOERROR)
+    {
+        return false;
+    }
+
+
+    result = midiOutUnprepareHeader(m_DeviceHandle, &midiHeader, sizeof(MIDIHDR));
+
+    CloseDevice();
+
+    return true;
+#endif
+}
+
+bool LTWindowsMIDIOutDevice::OpenDevice(void)
+{
+    if (m_bDeviceOpened)
+    {
+        CloseDevice();
+        m_bDeviceOpened = false;
+    }
+
+    MMRESULT result = midiOutOpen(&m_DeviceHandle, GetDeviceID(), NULL, NULL, CALLBACK_NULL);
+
+    if (result != MMSYSERR_NOERROR)
+    {
+        m_bDeviceOpened = false;
+
+        return m_bDeviceOpened;
+    }
+
+    m_bDeviceOpened = true;
+    return m_bDeviceOpened;
+}
+
+bool LTWindowsMIDIOutDevice::CloseDevice(void)
+{
+    MMRESULT result = midiOutClose(m_DeviceHandle);
+
+    if (result != MMSYSERR_NOERROR)
+    {
+        return false;
+    }
+
+    m_bDeviceOpened = false;
+    return true;
+}
+
+
+bool LTWindowsMIDIOutDevice::OpenStream(void)
+{
+    if (m_bStreamOpened)
+    {
+        CloseDevice();
+        m_bStreamOpened = false;
+    }
+
+    UINT deviceID;
+
+    MMRESULT result = midiStreamOpen(&m_StreamHandle, &deviceID, 1, NULL, NULL, CALLBACK_NULL);
+
+    if (result != MMSYSERR_NOERROR)
+    {
+        m_bStreamOpened = false;
+
+        return m_bStreamOpened;
+    }
+
+    m_bStreamOpened = true;
+    return m_bStreamOpened;
+}
+
+bool LTWindowsMIDIOutDevice::CloseStream(void)
+{
+    MMRESULT result = midiStreamClose(m_StreamHandle);
+
+    if (result != MMSYSERR_NOERROR)
+    {
+        return false;
+    }
+
+    m_bStreamOpened = false;
+    return true;
+}
