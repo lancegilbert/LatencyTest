@@ -2,6 +2,10 @@
 
 #include "iasiodrv.h"
 
+// The ASIO64toDouble macro is taken from the ASIO SDK 2.3 host sample
+const double twoRaisedTo32 = 4294967296.;
+#define ASIO64toDouble(a)  ((a).lo + (a).hi * twoRaisedTo32)
+
 extern IASIO *theAsioDriver;
 
 QMutex LTWindowsASIO::s_LTWindowsAsioMutex;
@@ -82,6 +86,7 @@ LTWindowsASIODriver::LTWindowsASIODriver(AsioDrivers* asioDrivers)
     , m_fTcSamples(0.0)
     , m_uSystemRefrenceTime(0)
     , m_bPostOutput(false)
+    , m_iSignalDetectedTimerInputChannel(0)
 {
     
 }
@@ -205,6 +210,13 @@ bool LTWindowsASIODriver::Load(void)
 
     Open(inputChannels, outputChannels, minSize, maxSize, preferredSize, granularity, inputLatency, outputLatency, sampleRate);
 
+    if (ASIOStart() != ASE_OK)
+    {
+        m_bLoaded = false;
+
+        return m_bLoaded;
+    }
+
     return m_bLoaded;
 }
 
@@ -213,25 +225,109 @@ uint64_t LTWindowsASIODriver::GetTime(void)
     return timeGetTime();
 }
 
-// ASIO SDK Callbacks
-void LTWindowsASIODriver::AsioCallbackBufferSwitch(long index, ASIOBool processNow)
+void LTWindowsASIODriver::StartSignalDetectTimer(int inputChannel)
+{
+    m_SignalDetectedMutex.lock();
+
+    m_iSignalDetectedTimerInputChannel = inputChannel;
+
+    if (m_SignalDetectedTimer.isValid())
+    {
+        m_SignalDetectedTimer.restart();
+    }
+    else
+    {
+        m_SignalDetectedTimer.start();
+    }
+}
+
+int64_t LTWindowsASIODriver::WaitForSignalDetected(void)
+{
+    m_SignalDetectedMutex.lock();
+    m_SignalDetectedMutex.unlock();
+
+    return m_iSignalDetectedNsecsElapsed;
+}
+
+void LTWindowsASIODriver::AsioCallbackBufferSwitch_Internal(long index, ASIOBool processNow)
 {
     ASIOTime  timeInfo;
     memset(&timeInfo, 0, sizeof(timeInfo));
 
-    LTWindowsASIO::GetLockedLTWindowsAsio();
-
     if (ASIOGetSamplePosition(&timeInfo.timeInfo.samplePosition, &timeInfo.timeInfo.systemTime) == ASE_OK)
         timeInfo.timeInfo.flags = kSystemTimeValid | kSamplePositionValid;
 
-    LTWindowsASIO::UnlockLTWindowsAsio();
+    AsioCallbackbufferSwitchTimeInfo_Internal(&timeInfo, index, processNow);
 
-    AsioCallbackbufferSwitchTimeInfo(&timeInfo, index, processNow);
+    if (m_SignalDetectedTimer.isValid())
+    {
+        bool risingEdge = false;
+
+        uint64_t sample = *((uint64_t*)m_pBufferInfos[m_iSignalDetectedTimerInputChannel].buffers[index]);
+
+        m_iSignalDetectedNsecsElapsed = m_SignalDetectedTimer.nsecsElapsed();
+
+        if (risingEdge)
+        {
+            m_SignalDetectedTimer.invalidate();
+            m_SignalDetectedMutex.unlock();
+        }
+    }
+}
+
+ASIOTime* LTWindowsASIODriver::AsioCallbackbufferSwitchTimeInfo_Internal(ASIOTime* timeInfo, long index, ASIOBool processNow)
+{
+    m_TimeInfo = *timeInfo;
+
+    if (timeInfo->timeInfo.flags & kSystemTimeValid)
+    {
+        m_fNanoSeconds = ASIO64toDouble(timeInfo->timeInfo.systemTime);
+    }
+    else
+    {
+        m_fNanoSeconds = 0;
+    }
+
+    if (timeInfo->timeInfo.flags & kSamplePositionValid)
+    {
+        m_fSamples = ASIO64toDouble(timeInfo->timeInfo.samplePosition);
+    }
+    else
+    {
+        m_fSamples = 0;
+    }
+
+    if (timeInfo->timeCode.flags & kTcValid)
+    {
+        m_fTcSamples = ASIO64toDouble(timeInfo->timeCode.timeCodeSamples);
+    }
+    else
+    {
+        m_fTcSamples = 0;
+    }
+
+    m_uSystemRefrenceTime = GetTime();
+
+    //if (m_bPostOutput)
+    //    ASIOOutputReady();
+
+    return 0L;
+}
+
+// ASIO SDK Callbacks
+void LTWindowsASIODriver::AsioCallbackBufferSwitch(long index, ASIOBool processNow)
+{
+    LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
+    LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
+
+    driver->AsioCallbackBufferSwitch_Internal(index, processNow);
+
+    LTWindowsASIO::UnlockLTWindowsAsio();
 }
 
 void LTWindowsASIODriver::AsioCallbackSampleRateDidChange(ASIOSampleRate sampleRate)
 {
-
+    Sleep(1);
 }
 
 // This function is largely taken from the ASIO SDK 2.3 host sample to preserve documentation
@@ -297,52 +393,15 @@ long LTWindowsASIODriver::AsioCallbackAsioMessages(long selector, long value, vo
     return ret;
 }
 
-// The ASIO64toDouble macro is taken from the ASIO SDK 2.3 host sample
-const double twoRaisedTo32 = 4294967296.;
-#define ASIO64toDouble(a)  ((a).lo + (a).hi * twoRaisedTo32)
-
 ASIOTime* LTWindowsASIODriver::AsioCallbackbufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool processNow)
 {
     LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
     LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
 
-    driver->m_TimeInfo = *timeInfo;
-
-    if (timeInfo->timeInfo.flags & kSystemTimeValid)
-    {
-        driver->m_fNanoSeconds = ASIO64toDouble(timeInfo->timeInfo.systemTime);
-    }
-    else
-    {
-        driver->m_fNanoSeconds = 0;
-    }
-
-    if (timeInfo->timeInfo.flags & kSamplePositionValid)
-    {
-        driver->m_fSamples = ASIO64toDouble(timeInfo->timeInfo.samplePosition);
-    }
-    else
-    {
-        driver->m_fSamples = 0;
-    }
-
-    if (timeInfo->timeCode.flags & kTcValid)
-    {
-        driver->m_fTcSamples = ASIO64toDouble(timeInfo->timeCode.timeCodeSamples);
-    }
-    else
-    {
-        driver->m_fTcSamples = 0;
-    }
-
-    driver->m_uSystemRefrenceTime = driver->GetTime();
-
-    // finally if the driver supports the ASIOOutputReady() optimization, do it here, all data are in place
-    if (driver->m_bPostOutput)
-        ASIOOutputReady();
+    ASIOTime* retTime = driver->AsioCallbackbufferSwitchTimeInfo_Internal(timeInfo, index, processNow);
+    driver->AsioCallbackBufferSwitch_Internal(index, processNow);
 
     LTWindowsASIO::UnlockLTWindowsAsio();
 
-    return 0;
+    return retTime;
 }
-

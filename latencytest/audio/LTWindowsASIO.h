@@ -4,6 +4,8 @@
 #include <QStringList>
 #include <QList>
 #include <QMutex>
+#include <QThread>
+#include <QElapsedTimer>
 
 #include <Windows.h>
 
@@ -50,10 +52,18 @@ public:
 
     uint64_t GetTime(void);
 
+    void StartSignalDetectTimer(int inputChannel);
+
     static void AsioCallbackBufferSwitch(long index, ASIOBool processNow);
     static void AsioCallbackSampleRateDidChange(ASIOSampleRate sampleRate);
     static long AsioCallbackAsioMessages(long selector, long value, void* message, double* opt);
     static ASIOTime* AsioCallbackbufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool processNow);
+
+    int64_t WaitForSignalDetected(void);
+
+private:
+    void AsioCallbackBufferSwitch_Internal(long index, ASIOBool processNow);
+    ASIOTime* AsioCallbackbufferSwitchTimeInfo_Internal(ASIOTime* timeInfo, long index, ASIOBool processNow);
 
 private:
     AsioDrivers* m_pAsioDrivers;
@@ -65,6 +75,12 @@ private:
     double m_fTcSamples;
     uint32_t m_uSystemRefrenceTime;
     bool m_bPostOutput;
+
+    QMutex m_SignalDetectedMutex;
+    QElapsedTimer m_SignalDetectedTimer;
+    int m_iSignalDetectedTimerInputChannel;
+    int64_t m_iSignalDetectedNsecsElapsed;
+
 
     bool m_bLoaded;
 };

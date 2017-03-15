@@ -135,6 +135,9 @@ void LTMainWindow::onAsioCurrentIndexChanged(int index)
 
 void LTMainWindow::onLatencyTestMeasurePushed(void)
 {
+    LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
+    LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
+
     for (int idx = 0; idx < m_LTRowWidgets.count(); idx++)
     {
         LTRowWidget* curRow = m_LTRowWidgets.at(idx);
@@ -142,7 +145,13 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
         if (curRow->enableCheckBox->isChecked())
         {
             LTMIDIOutDevice* device = m_pWindowsMIDI->GetOutDevice(idx);
+
+            LTWindowsASIO::UnlockLTWindowsAsio();
+
+            driver->StartSignalDetectTimer(curRow->asioInputChannelSpinBox->value());
+
             device->TriggerMIDINote(curRow->midiChannelSpinBox->value(), LTMIDI_Note_C, 3, 0x40);
+            int64_t nsecsElapsed = driver->WaitForSignalDetected();
 
             //latencyTestGridLayout->removeWidget(curRow->asioDriverLabel);
             //latencyTestGridLayout->removeWidget(curRow->asioInputChannelSpinBox);
