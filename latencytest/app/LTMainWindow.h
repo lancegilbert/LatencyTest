@@ -6,6 +6,7 @@
 #include <QTimer>
 #include <QSettings>
 #include <QLabel>
+#include <QList>
 
 #include "Windows.h"
 
@@ -18,6 +19,7 @@ class LTMainWindow;
 }
 
 class LTApplication;
+class LTRowWidget;
 
 class LTMainWindow : public QMainWindow, public Ui_LTMainWindow
 {
@@ -49,6 +51,7 @@ private:
     void initializeMidiInPanel(void);
     void initializeMidiOutPanel(void);
     void initializeAsioPanel(void);
+    void initializeLatencyTestPanel(void);
 
 public slots:
     void onClickHelpAbout(void);
@@ -95,7 +98,11 @@ private:
 
     class LTWindowsMIDI *m_pWindowsMIDI;
     class LTWindowsASIO *m_pWindowsASIO;
+
+    class LTWindowsASIODriver *m_pCurWindowsASIODriver;
  
+    QList<LTRowWidget*> m_LTRowWidgets;
+
 protected:
 	virtual bool event (QEvent* lEvent); 
     virtual bool eventFilter(QObject *obj, QEvent *ev);

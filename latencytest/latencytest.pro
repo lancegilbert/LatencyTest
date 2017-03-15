@@ -15,6 +15,7 @@ INCLUDEPATH += 	"$$_PRO_FILE_PWD_/" \
 
 SOURCES += 	./app/LTApplication.cpp \
 			./app/LTMainWindow.cpp \
+			./app/LTRowWidget.cpp \
 			./midi/LTWindowsMIDI.cpp \
 			./midi/LTMIDIDevice.cpp \
 			./audio/LTAudioDriver.cpp \
@@ -22,6 +23,7 @@ SOURCES += 	./app/LTApplication.cpp \
 
 HEADERS += 	./app/LTApplication.h \
 			./app/LTMainWindow.h \
+			./app/LTRowWidget.h \
 			./midi/LTWindowsMIDI.h\
 			./midi/LTMIDIDevice.h \
 			./audio/LTAudioDriver.h \
@@ -42,5 +44,6 @@ win32*:contains(QMAKE_HOST.arch, x86_64): {
 }
 
 FORMS += \
-    ui/LTMainWindowUI.ui
+    ui/LTMainWindowUI.ui \
+    ui/LTRowWidgetUI.ui
 
