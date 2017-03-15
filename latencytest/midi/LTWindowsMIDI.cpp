@@ -1,27 +1,14 @@
 #include "LTWindowsMIDI.h"
 
 LTWindowsMIDI::LTWindowsMIDI()
-    : m_iNumInitializedInDevs(0)
-    , m_iNumInitializedOutDevs(0)
-    , m_pInDevs(nullptr)
-    , m_pOutDevs(nullptr)
+    : LTMIDI()
 {
 
 }
 
 LTWindowsMIDI::~LTWindowsMIDI()
 {
-    if (m_pInDevs != nullptr)
-    {
-        delete[] m_pInDevs;
-        m_iNumInitializedInDevs = 0;
-    }
 
-    if (m_pOutDevs != nullptr)
-    {
-        delete[] m_pOutDevs;
-        m_iNumInitializedOutDevs = 0;
-    }
 }
 
 void LTWindowsMIDI::InitializeMIDIIn(void)
@@ -29,6 +16,7 @@ void LTWindowsMIDI::InitializeMIDIIn(void)
     if (m_pInDevs != nullptr)
     {
         delete[] m_pInDevs;
+        m_pInDevs = nullptr;
         m_iNumInitializedInDevs = 0;
     }
 
@@ -36,13 +24,15 @@ void LTWindowsMIDI::InitializeMIDIIn(void)
 
     if(numInDevs > 0)
     {
-        m_pInDevs = new LTWindowsMIDIInDevice[numInDevs];
+        LTWindowsMIDIInDevice* inDevs = new LTWindowsMIDIInDevice[numInDevs];
 
         for (UINT idx = 0; idx < numInDevs; idx++)
         {
-            m_pInDevs[idx].Initialize(idx);
+            inDevs[idx].Initialize(idx);
             m_iNumInitializedInDevs++;
         }
+
+        m_pInDevs = inDevs;
     }
 }
 
@@ -51,6 +41,7 @@ void LTWindowsMIDI::InitializeMIDIOut(void)
     if (m_pOutDevs != nullptr)
     {
         delete[] m_pOutDevs;
+        m_pOutDevs = nullptr;
         m_iNumInitializedOutDevs = 0;
     }
 
@@ -58,36 +49,18 @@ void LTWindowsMIDI::InitializeMIDIOut(void)
 
     if (numOutDevs > 0)
     {
-        m_pOutDevs = new LTWindowsMIDIOutDevice[numOutDevs];
+        LTWindowsMIDIInDevice* outDevs = new LTWindowsMIDIInDevice[numOutDevs];
 
         for (UINT idx = 0; idx < numOutDevs; idx++)
         {
-            if (m_pOutDevs[idx].Initialize(idx))
+            if (outDevs[idx].Initialize(idx))
             {
                 m_iNumInitializedOutDevs++;
             }
         }
+
+        m_pOutDevs = outDevs;
     }
-}
-
-LTWindowsMIDIInDevice* LTWindowsMIDI::GetInDevice(int deviceID)
-{
-    if (m_pInDevs == nullptr || m_iNumInitializedInDevs == 0 || deviceID >= m_iNumInitializedInDevs)
-    {
-        return nullptr;
-    }
-
-    return &m_pInDevs[deviceID];
-}
-
-LTWindowsMIDIOutDevice* LTWindowsMIDI::GetOutDevice(int deviceID)
-{
-    if (m_pOutDevs == nullptr || m_iNumInitializedOutDevs == 0 || deviceID >= m_iNumInitializedOutDevs)
-    {
-        return nullptr;
-    }
-
-    return &m_pOutDevs[deviceID];
 }
 
 LTWindowsMIDIInDevice::LTWindowsMIDIInDevice()

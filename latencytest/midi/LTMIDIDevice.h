@@ -3,6 +3,29 @@
 
 #include <QString>
 
+class LTMIDI
+{
+public:
+    LTMIDI(void);
+    virtual ~LTMIDI(void);
+
+    virtual void InitializeMIDIIn(void) = 0;
+    virtual void InitializeMIDIOut(void) = 0;
+
+    int GetNumInitializedInDevices(void) { return m_iNumInitializedInDevs; }
+    int GetNumInitializedOutDevices(void) { return m_iNumInitializedOutDevs; }
+
+    class LTMIDIDevice* GetInDevice(int deviceID);
+    class LTMIDIDevice* GetOutDevice(int deviceID);
+
+protected:
+    int m_iNumInitializedInDevs;
+    int m_iNumInitializedOutDevs;
+
+    class LTMIDIDevice* m_pInDevs;
+    class LTMIDIDevice* m_pOutDevs;
+};
+
 class LTMIDIDevice
 {
 public:

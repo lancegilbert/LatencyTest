@@ -5,7 +5,7 @@
 
 #include "LTMIDIDevice.h"
 
-class LTWindowsMIDI
+class LTWindowsMIDI : public LTMIDI
 {
 public:
     LTWindowsMIDI(void);
@@ -14,18 +14,7 @@ public:
     virtual void InitializeMIDIIn(void);
     virtual void InitializeMIDIOut(void);
 
-    uint32_t GetNumInitializedInDevices(void) { return m_iNumInitializedInDevs; }
-    uint32_t GetNumInitializedOutDevices(void) { return m_iNumInitializedOutDevs; }
-
-    class LTWindowsMIDIInDevice* GetInDevice(int deviceID);
-    class LTWindowsMIDIOutDevice* GetOutDevice(int deviceID);
-
 private:
-    UINT m_iNumInitializedInDevs;
-    UINT m_iNumInitializedOutDevs;
-
-    class LTWindowsMIDIInDevice* m_pInDevs;
-    class LTWindowsMIDIOutDevice* m_pOutDevs;
 };
 
 class LTWindowsMIDIInDevice : public LTMIDIInDevice

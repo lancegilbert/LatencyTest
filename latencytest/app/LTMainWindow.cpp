@@ -111,8 +111,8 @@ void LTMainWindow::onAsioCurrentIndexChanged(int index)
         return;
     }
 
-    inputChannelsValueLabel->setText(tr("%1").arg(driver->GetInputChannels()));
-    outputChannelsValueLabel->setText(tr("%1").arg(driver->GetOutputChannels()));
+    inputChannelsValueLabel->setText(tr("%1").arg(driver->GetNumInputChannels()));
+    outputChannelsValueLabel->setText(tr("%1").arg(driver->GetNumOutputChannels()));
     minSizeValueLabel->setText(tr("%1").arg(driver->GetMinSize()));
     maxSizeValueLabel->setText(tr("%1").arg(driver->GetMaxSize()));
     preferredSizeValueLabel->setText(tr("%1").arg(driver->GetPreferredSize()));
@@ -124,6 +124,25 @@ void LTMainWindow::onAsioCurrentIndexChanged(int index)
     m_pCurWindowsASIODriver = driver;
 
     initializeLatencyTestPanel();
+}
+
+void LTMainWindow::onLatencyTestMeasurePushed(void)
+{
+    for (int idx = 0; idx < m_LTRowWidgets.count(); idx++)
+    {
+        LTRowWidget* curRow = m_LTRowWidgets.at(idx);
+
+        if (curRow->enableCheckBox->isChecked())
+        {
+            
+            //latencyTestGridLayout->removeWidget(curRow->enableCheckBox);
+            //latencyTestGridLayout->removeWidget(curRow->midiOutLabel);
+            //latencyTestGridLayout->removeWidget(curRow->midiChannelSpinBox);
+            //latencyTestGridLayout->removeWidget(curRow->asioDriverLabel);
+            //latencyTestGridLayout->removeWidget(curRow->asioOutputChannelSpinBox);
+            //latencyTestGridLayout->removeWidget(curRow->latencyLabel);
+        }
+    }
 }
 
 void LTMainWindow::initializeMidiInPanel(void)
@@ -267,12 +286,14 @@ void LTMainWindow::initializeLatencyTestPanel(void)
                 newRow->asioDriverLabel->setText("No ASIO Driver Selected");
                 newRow->enableCheckBox->setEnabled(false);
                 newRow->asioOutputChannelSpinBox->setEnabled(false);
+                newRow->asioOutputChannelSpinBox->setMaximum(0);
             }
             else
             {
                 newRow->asioDriverLabel->setText(m_pCurWindowsASIODriver->GetName());
                 newRow->enableCheckBox->setEnabled(true);
                 newRow->asioOutputChannelSpinBox->setEnabled(true);
+                newRow->asioOutputChannelSpinBox->setMaximum(m_pCurWindowsASIODriver->GetNumOutputChannels());
             }
 
             latencyTestGridLayout->addWidget(newRow->enableCheckBox, idx + 1, 1);
@@ -422,7 +443,6 @@ void LTMainWindow::onAppRestoreSettings(void)
     QSettings *settings = ((LTApplication*)LTApplication::instance())->getSettings();
     loadSettings(settings, true, false);
 }
-
 
 void LTMainWindow::initTimecounter(void)
 {

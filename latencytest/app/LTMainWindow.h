@@ -63,6 +63,7 @@ public slots:
     void onRefreshMIDIInPushed(void);
     void onRefreshMIDIOutPushed(void);
     void onAsioCurrentIndexChanged(int index);
+    void onLatencyTestMeasurePushed(void);
 
 public:
 

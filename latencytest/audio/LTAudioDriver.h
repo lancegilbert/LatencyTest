@@ -17,8 +17,8 @@ public:
     int GetDriverID(void) { return m_iDriverID; }
     QString GetName(void) { return m_sName; }
 
-    int GetInputChannels(void) { return m_iInputChannels; }
-    int GetOutputChannels(void) { return m_iOutputChannels; }
+    int GetNumInputChannels(void) { return m_iInputChannels; }
+    int GetNumOutputChannels(void) { return m_iOutputChannels; }
     int GetMinSize(void) { return m_iMinSize; }
     int GetMaxSize(void) { return m_iMaxSize; }
     int GetPreferredSize(void) { return m_iPreferredSize; }

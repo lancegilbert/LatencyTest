@@ -1,5 +1,49 @@
 #include "LTMIDIDevice.h"
 
+LTMIDI::LTMIDI()
+    : m_iNumInitializedInDevs(0)
+    , m_iNumInitializedOutDevs(0)
+    , m_pInDevs(nullptr)
+    , m_pOutDevs(nullptr)
+{
+
+}
+
+LTMIDI::~LTMIDI()
+{
+    if (m_pInDevs != nullptr)
+    {
+        delete[] m_pInDevs;
+        m_iNumInitializedInDevs = 0;
+    }
+
+    if (m_pOutDevs != nullptr)
+    {
+        delete[] m_pOutDevs;
+        m_iNumInitializedOutDevs = 0;
+    }
+}
+
+LTMIDIDevice* LTMIDI::GetInDevice(int deviceID)
+{
+    if (m_pInDevs == nullptr || m_iNumInitializedInDevs == 0 || deviceID >= m_iNumInitializedInDevs)
+    {
+        return nullptr;
+    }
+
+    return &m_pInDevs[deviceID];
+}
+
+LTMIDIDevice* LTMIDI::GetOutDevice(int deviceID)
+{
+    if (m_pOutDevs == nullptr || m_iNumInitializedOutDevs == 0 || deviceID >= m_iNumInitializedOutDevs)
+    {
+        return nullptr;
+    }
+
+    return &m_pOutDevs[deviceID];
+}
+
 LTMIDIDevice::LTMIDIDevice()
     : m_iDeviceID(-1)
     , m_iMID(-1)
