@@ -98,9 +98,6 @@ private:
     LARGE_INTEGER m_iTicksPerSecond;
 
     class LTWindowsMIDI *m_pWindowsMIDI;
-    class LTWindowsASIO *m_pWindowsASIO;
-
-    class LTWindowsASIODriver *m_pCurWindowsASIODriver;
  
     QList<LTRowWidget*> m_LTRowWidgets;
 

@@ -12,6 +12,8 @@ public:
     virtual bool Initialize(int driverID, QString name);
     virtual bool Open(int inputChannels, int outputChannels, int minSize, int maxSize, int preferredSize, int granularity, int inputLatency, int outputLatency, double sampleRate);
 
+    virtual bool StartRead(int inputChannel) = 0;
+
     bool GetIsOpen(void) { return m_bOpen; }
 
     int GetDriverID(void) { return m_iDriverID; }

@@ -39,8 +39,6 @@ LTMainWindow::LTMainWindow(LTApplication* pApp, QDateTime startupTime)
     , m_sLoadedFilePath("UNKNOWN")
     , m_bInitialPrefsLoadComplete(false)
     , m_pWindowsMIDI(nullptr)
-    , m_pWindowsASIO(nullptr)
-    , m_pCurWindowsASIODriver(nullptr)
  {
     setupUi(this);
  
@@ -57,7 +55,6 @@ LTMainWindow::LTMainWindow(LTApplication* pApp, QDateTime startupTime)
     mainWindowStatusBar->addPermanentWidget(m_pPermStatusLabel);
 
     m_pWindowsMIDI = new LTWindowsMIDI();
-    m_pWindowsASIO = new LTWindowsASIO();
 
     connect(midiInRefreshButton, SIGNAL(clicked()), this, SLOT(onRefreshMIDIInPushed()));
     connect(midiOutRefreshButton, SIGNAL(clicked()), this, SLOT(onRefreshMIDIOutPushed()));
@@ -91,24 +88,33 @@ void LTMainWindow::onRefreshMIDIOutPushed(void)
 
 void LTMainWindow::onAsioCurrentIndexChanged(int index)
 {
-    int numDrivers = m_pWindowsASIO->GetNumDrivers();
+    LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
+
+    int numDrivers = ltWindowsAsio->GetNumDrivers();
 
     if (numDrivers <= index)
     {
+        LTWindowsASIO::UnlockLTWindowsAsio();
         return;
     }
 
-    LTWindowsASIODriver* driver = m_pWindowsASIO->GetDriver(index);
+    LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
 
     if (driver == nullptr)
     {
+        LTWindowsASIO::UnlockLTWindowsAsio();
         return;
     }
 
-    bool loaded = driver->Load();
-
-    if (!loaded)
+    if (!driver->Initialize(index, ltWindowsAsio->GetDriverName(index)))
     {
+        LTWindowsASIO::UnlockLTWindowsAsio();
+        return;
+    }
+
+    if (!driver->Load())
+    {
+        LTWindowsASIO::UnlockLTWindowsAsio();
         return;
     }
 
@@ -122,7 +128,7 @@ void LTMainWindow::onAsioCurrentIndexChanged(int index)
     outputLatencyValueLabel->setText(tr("%1").arg(driver->GetOutputLatency()));
     sampleRateValueLabel->setText(tr("%1").arg(driver->GetSampleRate()));
 
-    m_pCurWindowsASIODriver = driver;
+    LTWindowsASIO::UnlockLTWindowsAsio();
 
     initializeLatencyTestPanel();
 }
@@ -239,21 +245,32 @@ void LTMainWindow::initializeMidiOutPanel(void)
 
 void LTMainWindow::initializeAsioPanel(void)
 {
-    m_pWindowsASIO->Initialize();
+    LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
 
-    int numDrivers = m_pWindowsASIO->GetNumDrivers();
+    ltWindowsAsio->Initialize();
+
+    int numDrivers = ltWindowsAsio->GetNumDrivers();
 
     asioDeviceListComboBox->clear();
 
+    // Signals for this widget must be blocked otherwise onAsioCurrentIndexChanged will be called immediately resulting in a deadlock
+    bool sigsBlocked = asioDeviceListComboBox->blockSignals(true);
+
     for (int idx = 0; idx < numDrivers; idx++)
     {
-        LTWindowsASIODriver* driver = m_pWindowsASIO->GetDriver(idx);
-        asioDeviceListComboBox->addItem(driver->GetName(), QVariant(driver->GetDriverID()));
+        asioDeviceListComboBox->addItem(ltWindowsAsio->GetDriverName(idx));
     }
+
+    asioDeviceListComboBox->blockSignals(sigsBlocked);
+
+    LTWindowsASIO::UnlockLTWindowsAsio();
 }
 
 void LTMainWindow::initializeLatencyTestPanel(void)
 {
+    LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
+    LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
+
     latencyTestGridLayout->removeItem(latencyTestVertSpacer);
 
     while (m_LTRowWidgets.count() > 0)
@@ -281,7 +298,7 @@ void LTMainWindow::initializeLatencyTestPanel(void)
 
             newRow->midiOutLabel->setText(device->GetName());
 
-            if(m_pCurWindowsASIODriver == nullptr)
+            if(ltWindowsAsio == nullptr)
             {
                 newRow->asioDriverLabel->setText("No ASIO Driver Selected");
                 newRow->enableCheckBox->setEnabled(false);
@@ -290,10 +307,10 @@ void LTMainWindow::initializeLatencyTestPanel(void)
             }
             else
             {
-                newRow->asioDriverLabel->setText(m_pCurWindowsASIODriver->GetName());
+                newRow->asioDriverLabel->setText(driver->GetName());
                 newRow->enableCheckBox->setEnabled(true);
                 newRow->asioInputChannelSpinBox->setEnabled(true);
-                newRow->asioInputChannelSpinBox->setMaximum(m_pCurWindowsASIODriver->GetNumInputChannels());
+                newRow->asioInputChannelSpinBox->setMaximum(driver->GetNumInputChannels());
             }
 
             latencyTestGridLayout->addWidget(newRow->enableCheckBox, idx + 1, 1);
@@ -306,6 +323,8 @@ void LTMainWindow::initializeLatencyTestPanel(void)
     }
 
     latencyTestGridLayout->addItem(latencyTestVertSpacer, numOutDevs + 1, 0);
+
+    LTWindowsASIO::UnlockLTWindowsAsio();
 }
 
 void LTMainWindow::loadSettings(QSettings *settings, bool reset, bool propigateSharedSettings)

@@ -2,6 +2,8 @@
 #define _LTWINDOWSASIO_H_
 
 #include <QStringList>
+#include <QList>
+#include <QMutex>
 
 #include <Windows.h>
 
@@ -19,31 +21,53 @@ public:
     LTWindowsASIO(void);
     virtual ~LTWindowsASIO(void);
 
+    static LTWindowsASIO* GetLockedLTWindowsAsio(void);
+    static void UnlockLTWindowsAsio(void);
+
     virtual void Initialize(void);
 
-    uint32_t GetNumDrivers(void) { return m_iNumDevs; }
+    uint32_t GetNumDrivers(void) { return m_DriverNames.count(); }
+    QString GetDriverName(int index) { return m_DriverNames.at(index); }
 
-    class LTWindowsASIODriver* GetDriver(int driverID);
+    class LTWindowsASIODriver* GetDriver(void) { return m_pDriver; }
 
 private:
-    UINT m_iNumDevs;
-    class LTWindowsASIODriver* m_pDevs;
+    class LTWindowsASIODriver* m_pDriver;
     QStringList m_DriverNames;
 
-    AsioDrivers* m_pAsioDrivers;
+    static QMutex s_LTWindowsAsioMutex;
+    static LTWindowsASIO* s_pLTWindowsAsio;
 };
 
 class LTWindowsASIODriver : public LTAudioDriver
 {
 public:
-    LTWindowsASIODriver(void);
+    LTWindowsASIODriver(AsioDrivers* asioDrivers);
     virtual ~LTWindowsASIODriver(void);
 
-    virtual bool Initialize(AsioDrivers* asioDrivers, int driverID, QString name);
+    virtual bool Initialize(int driverID, QString name);
     virtual bool Load(void);
+    virtual bool StartRead(int inputChannel);
+
+    uint64_t GetTime(void);
+
+    void AsioCallbackBufferSwitch(long index, ASIOBool processNow);
+    void AsioCallbackSampleRateDidChange(ASIOSampleRate sampleRate);
+    long AsioCallbackAsioMessages(long selector, long value, void* message, double* opt);
+    ASIOTime* AsioCallbackbufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool processNow);
 
 private:
     AsioDrivers* m_pAsioDrivers;
+
+    QList<ASIOBufferInfo*> m_InputBufferInfos;
+    QList<ASIOBufferInfo*> m_OutputBufferInfos;
+    ASIOTime m_TimeInfo;
+    double m_fNanoSeconds;
+    double m_fSamples;
+    double m_fTcSamples;
+    uint32_t m_uSystemRefrenceTime;
+    bool m_bPostOutput;
+
     bool m_bLoaded;
 };
 

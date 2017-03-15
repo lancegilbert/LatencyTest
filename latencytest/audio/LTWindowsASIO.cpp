@@ -4,45 +4,50 @@
 
 extern IASIO *theAsioDriver;
 
-LTWindowsASIO::LTWindowsASIO(void)
-    : m_iNumDevs(0)
-    , m_pDevs(nullptr)
-    , m_pAsioDrivers(nullptr)
-{
+QMutex LTWindowsASIO::s_LTWindowsAsioMutex;
+LTWindowsASIO* LTWindowsASIO::s_pLTWindowsAsio = nullptr;
 
+LTWindowsASIO* LTWindowsASIO::GetLockedLTWindowsAsio(void)
+{
+    if (s_pLTWindowsAsio == nullptr)
+    {
+        s_pLTWindowsAsio = new LTWindowsASIO();
+    }
+
+    s_LTWindowsAsioMutex.lock();
+
+    return s_pLTWindowsAsio;
+}
+
+void LTWindowsASIO::UnlockLTWindowsAsio(void)
+{
+    s_LTWindowsAsioMutex.unlock();
+}
+
+LTWindowsASIO::LTWindowsASIO(void)
+    : m_pDriver(nullptr)
+{
 }
 
 LTWindowsASIO::~LTWindowsASIO(void)
 {
-    if (m_pDevs != nullptr)
+    if (m_pDriver != nullptr)
     {
-        delete[] m_pDevs;
-        m_pDevs = nullptr;
-
-        m_iNumDevs = 0;
-    }
-
-    if (m_pAsioDrivers != nullptr)
-    {
-        delete m_pAsioDrivers;
-        m_pAsioDrivers = nullptr;
+        delete m_pDriver;
+        m_pDriver = nullptr;
     }
 }
 
 void LTWindowsASIO::Initialize(void)
 {
-    if (m_pDevs != nullptr)
+    if (m_pDriver != nullptr)
     {
-        delete[] m_pDevs;
-        m_iNumDevs = 0;
+        delete m_pDriver;
     }
 
     m_DriverNames.clear();
 
-    if (m_pAsioDrivers == nullptr)
-    {
-        m_pAsioDrivers = new AsioDrivers();
-    }
+    AsioDrivers* asioDrivers = new AsioDrivers();
 
     char* asioDriverNames[ASIO_MAX_DRIVERS];
 
@@ -52,7 +57,7 @@ void LTWindowsASIO::Initialize(void)
         asioDriverNames[idx][0] = '\0';
     }
 
-    m_pAsioDrivers->getDriverNames(asioDriverNames, ASIO_MAX_DRIVERS);
+    asioDrivers->getDriverNames(asioDriverNames, ASIO_MAX_DRIVERS);
 
     for (int idx = 0; idx < ASIO_MAX_DRIVERS; idx++)
     {
@@ -64,53 +69,58 @@ void LTWindowsASIO::Initialize(void)
         delete[] asioDriverNames[idx];
     }
 
-    UINT numDevs = m_DriverNames.count();
-
-    if(numDevs > 0)
-    {
-        m_pDevs = new LTWindowsASIODriver[numDevs];
-
-        for (UINT idx = 0; idx < numDevs; idx++)
-        {
-            m_pDevs[idx].Initialize(m_pAsioDrivers, idx, m_DriverNames.at(idx));
-            m_iNumDevs++;
-        }
-    }
+    m_pDriver = new LTWindowsASIODriver(asioDrivers);
 }
 
-LTWindowsASIODriver* LTWindowsASIO::GetDriver(int driverID)
-{
-    if (m_pDevs == nullptr || m_iNumDevs == 0 || driverID >= m_iNumDevs)
-    {
-        return nullptr;
-    }
-
-    return &m_pDevs[driverID];
-}
-
-LTWindowsASIODriver::LTWindowsASIODriver()
+LTWindowsASIODriver::LTWindowsASIODriver(AsioDrivers* asioDrivers)
     : LTAudioDriver()
-    , m_pAsioDrivers(nullptr)
+    , m_pAsioDrivers(asioDrivers)
     , m_bLoaded(false)
+    , m_fNanoSeconds(0.0)
+    , m_fSamples(0.0)
+    , m_fTcSamples(0.0)
+    , m_uSystemRefrenceTime(0)
+    , m_bPostOutput(false)
 {
-
+    
 }
 
 LTWindowsASIODriver::~LTWindowsASIODriver(void)
 {
+    while (m_InputBufferInfos.count() > 0)
+    {
+        delete m_InputBufferInfos.takeLast();
+    }
 
+    while (m_OutputBufferInfos.count() > 0)
+    {
+        delete m_OutputBufferInfos.takeLast();
+    }
+
+    if (m_pAsioDrivers != nullptr)
+    {
+        delete m_pAsioDrivers;
+    }
 }
 
-bool LTWindowsASIODriver::Initialize(AsioDrivers* asioDrivers, int DriverID, QString name)
+bool LTWindowsASIODriver::Initialize(int DriverID, QString name)
 {
-    m_pAsioDrivers = asioDrivers;
-
     return LTAudioDriver::Initialize(DriverID, name);
 }
 
 bool LTWindowsASIODriver::Load(void)
 {
     m_pAsioDrivers->removeCurrentDriver();
+
+    while (m_InputBufferInfos.count() > 0)
+    {
+        delete m_InputBufferInfos.takeLast();
+    }
+
+    while (m_OutputBufferInfos.count() > 0)
+    {
+        delete m_OutputBufferInfos.takeLast();
+    }
 
     m_bLoaded = m_pAsioDrivers->loadDriver(GetName().toLatin1().data());
 
@@ -133,7 +143,18 @@ bool LTWindowsASIODriver::Load(void)
     if (ASIOGetChannels(&inputChannels, &outputChannels) != ASE_OK)
     {
         m_bLoaded = false;
+
         return m_bLoaded;
+    }
+
+    for (int idx = 0; idx < inputChannels; idx++)
+    {
+        m_InputBufferInfos.append(new ASIOBufferInfo());
+    }
+
+    for (int idx = 0; idx < outputChannels; idx++)
+    {
+        m_OutputBufferInfos.append(new ASIOBufferInfo());
     }
 
     long minSize;
@@ -144,6 +165,7 @@ bool LTWindowsASIODriver::Load(void)
     if (ASIOGetBufferSize(&minSize, &maxSize, &preferredSize, &granularity) != ASE_OK)
     {
         m_bLoaded = false;
+
         return m_bLoaded;
     }
 
@@ -154,6 +176,7 @@ bool LTWindowsASIODriver::Load(void)
     if( ASIOGetLatencies(&inputLatency, &outputLatency) != ASE_OK)
     {
         m_bLoaded = false;
+
         return m_bLoaded;
     }
 
@@ -162,10 +185,164 @@ bool LTWindowsASIODriver::Load(void)
     if (ASIOGetSampleRate(&sampleRate) != ASE_OK)
     {
         m_bLoaded = false;
+
         return m_bLoaded;
+    }
+
+    if (ASIOOutputReady() == ASE_OK)
+    {
+        m_bPostOutput = true;
+    }
+    else
+    {
+        m_bPostOutput = false;
     }
 
     Open(inputChannels, outputChannels, minSize, maxSize, preferredSize, granularity, inputLatency, outputLatency, sampleRate);
 
     return m_bLoaded;
 }
+
+bool LTWindowsASIODriver::StartRead(int inputChannel)
+{
+    return false;
+}
+
+uint64_t LTWindowsASIODriver::GetTime(void)
+{
+    return timeGetTime();
+}
+
+// ASIO SDK Callbacks
+void LTWindowsASIODriver::AsioCallbackBufferSwitch(long index, ASIOBool processNow)
+{
+    ASIOTime  timeInfo;
+    memset(&timeInfo, 0, sizeof(timeInfo));
+
+    LTWindowsASIO::GetLockedLTWindowsAsio();
+
+    if (ASIOGetSamplePosition(&timeInfo.timeInfo.samplePosition, &timeInfo.timeInfo.systemTime) == ASE_OK)
+        timeInfo.timeInfo.flags = kSystemTimeValid | kSamplePositionValid;
+
+    LTWindowsASIO::UnlockLTWindowsAsio();
+
+    AsioCallbackbufferSwitchTimeInfo(&timeInfo, index, processNow);
+}
+
+void LTWindowsASIODriver::AsioCallbackSampleRateDidChange(ASIOSampleRate sampleRate)
+{
+
+}
+
+// This function is largely taken from the ASIO SDK 2.3 host sample to preserve documentation
+long LTWindowsASIODriver::AsioCallbackAsioMessages(long selector, long value, void* message, double* opt)
+{
+    long ret = 0;
+    switch (selector)
+    {
+        case kAsioSelectorSupported:
+            if (value == kAsioResetRequest
+                || value == kAsioEngineVersion
+                || value == kAsioResyncRequest
+                || value == kAsioLatenciesChanged
+                // the following three were added for ASIO 2.0, you don't necessarily have to support them
+                || value == kAsioSupportsTimeInfo
+                || value == kAsioSupportsTimeCode
+                || value == kAsioSupportsInputMonitor)
+                ret = 1L;
+            break;
+        case kAsioResetRequest:
+            // defer the task and perform the reset of the driver during the next "safe" situation
+            // You cannot reset the driver right now, as this code is called from the driver.
+            // Reset the driver is done by completely destruct is. I.e. ASIOStop(), ASIODisposeBuffers(), Destruction
+            // Afterwards you initialize the driver again.
+            ret = 1L;
+            break;
+        case kAsioResyncRequest:
+            // This informs the application, that the driver encountered some non fatal data loss.
+            // It is used for synchronization purposes of different media.
+            // Added mainly to work around the Win16Mutex problems in Windows 95/98 with the
+            // Windows Multimedia system, which could loose data because the Mutex was hold too long
+            // by another thread.
+            // However a driver can issue it in other situations, too.
+            ret = 1L;
+            break;
+        case kAsioLatenciesChanged:
+            // This will inform the host application that the drivers were latencies changed.
+            // Beware, it this does not mean that the buffer sizes have changed!
+            // You might need to update internal delay data.
+            ret = 1L;
+            break;
+        case kAsioEngineVersion:
+            // return the supported ASIO version of the host application
+            // If a host applications does not implement this selector, ASIO 1.0 is assumed
+            // by the driver
+            ret = 2L;
+            break;
+        case kAsioSupportsTimeInfo:
+            // informs the driver wether the asioCallbacks.bufferSwitchTimeInfo() callback
+            // is supported.
+            // For compatibility with ASIO 1.0 drivers the host application should always support
+            // the "old" bufferSwitch method, too.
+            ret = 1;
+            break;
+        case kAsioSupportsTimeCode:
+            // informs the driver wether application is interested in time code info.
+            // If an application does not need to know about time code, the driver has less work
+            // to do.
+            ret = 0;
+            break;
+    }
+
+    return ret;
+}
+
+// The ASIO64toDouble macro is taken from the ASIO SDK 2.3 host sample
+const double twoRaisedTo32 = 4294967296.;
+#define ASIO64toDouble(a)  ((a).lo + (a).hi * twoRaisedTo32)
+
+ASIOTime* LTWindowsASIODriver::AsioCallbackbufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool processNow)
+{
+    LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
+    LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
+
+    m_TimeInfo = *timeInfo;
+
+    if (timeInfo->timeInfo.flags & kSystemTimeValid)
+    {
+        m_fNanoSeconds = ASIO64toDouble(timeInfo->timeInfo.systemTime);
+    }
+    else
+    {
+        m_fNanoSeconds = 0;
+    }
+
+    if (timeInfo->timeInfo.flags & kSamplePositionValid)
+    {
+        m_fSamples = ASIO64toDouble(timeInfo->timeInfo.samplePosition);
+    }
+    else
+    {
+        m_fSamples = 0;
+    }
+
+    if (timeInfo->timeCode.flags & kTcValid)
+    {
+        m_fTcSamples = ASIO64toDouble(timeInfo->timeCode.timeCodeSamples);
+    }
+    else
+    {
+        m_fTcSamples = 0;
+    }
+
+    m_uSystemRefrenceTime = GetTime();
+
+    // finally if the driver supports the ASIOOutputReady() optimization, do it here, all data are in place
+    if (driver->m_bPostOutput)
+        ASIOOutputReady();
+
+    LTWindowsASIO::UnlockLTWindowsAsio();
+
+    return 0;
+}
+
