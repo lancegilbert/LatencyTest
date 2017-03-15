@@ -75,6 +75,7 @@ void LTWindowsASIO::Initialize(void)
 LTWindowsASIODriver::LTWindowsASIODriver(AsioDrivers* asioDrivers)
     : LTAudioDriver()
     , m_pAsioDrivers(asioDrivers)
+    , m_pBufferInfos(nullptr)
     , m_bLoaded(false)
     , m_fNanoSeconds(0.0)
     , m_fSamples(0.0)
@@ -87,15 +88,7 @@ LTWindowsASIODriver::LTWindowsASIODriver(AsioDrivers* asioDrivers)
 
 LTWindowsASIODriver::~LTWindowsASIODriver(void)
 {
-    while (m_InputBufferInfos.count() > 0)
-    {
-        delete m_InputBufferInfos.takeLast();
-    }
-
-    while (m_OutputBufferInfos.count() > 0)
-    {
-        delete m_OutputBufferInfos.takeLast();
-    }
+    delete[] m_pBufferInfos;
 
     if (m_pAsioDrivers != nullptr)
     {
@@ -112,15 +105,7 @@ bool LTWindowsASIODriver::Load(void)
 {
     m_pAsioDrivers->removeCurrentDriver();
 
-    while (m_InputBufferInfos.count() > 0)
-    {
-        delete m_InputBufferInfos.takeLast();
-    }
-
-    while (m_OutputBufferInfos.count() > 0)
-    {
-        delete m_OutputBufferInfos.takeLast();
-    }
+    delete[] m_pBufferInfos;
 
     m_bLoaded = m_pAsioDrivers->loadDriver(GetName().toLatin1().data());
 
@@ -147,14 +132,23 @@ bool LTWindowsASIODriver::Load(void)
         return m_bLoaded;
     }
 
-    for (int idx = 0; idx < inputChannels; idx++)
-    {
-        m_InputBufferInfos.append(new ASIOBufferInfo());
-    }
+    int totalChannels = inputChannels + outputChannels;
+    m_pBufferInfos = new ASIOBufferInfo[totalChannels];
 
-    for (int idx = 0; idx < outputChannels; idx++)
+    for (int idx = 0; idx < totalChannels; idx++)
     {
-        m_OutputBufferInfos.append(new ASIOBufferInfo());
+        if (idx < inputChannels)
+        {
+            m_pBufferInfos[idx].isInput = ASIOTrue;
+            m_pBufferInfos[idx].channelNum = idx;
+        }
+        else
+        {
+            m_pBufferInfos[idx].isInput = ASIOFalse;
+            m_pBufferInfos[idx].channelNum = (idx - inputChannels);
+        }
+
+        m_pBufferInfos[idx].buffers[0] = m_pBufferInfos[idx].buffers[1] = 0;
     }
 
     long minSize;
@@ -163,17 +157,6 @@ bool LTWindowsASIODriver::Load(void)
     long granularity;
 
     if (ASIOGetBufferSize(&minSize, &maxSize, &preferredSize, &granularity) != ASE_OK)
-    {
-        m_bLoaded = false;
-
-        return m_bLoaded;
-    }
-
-    long inputLatency;
-    long outputLatency;
-
-    // It is possible that there will not be valid latencies until after ASIO buffer creation
-    if( ASIOGetLatencies(&inputLatency, &outputLatency) != ASE_OK)
     {
         m_bLoaded = false;
 
@@ -198,14 +181,31 @@ bool LTWindowsASIODriver::Load(void)
         m_bPostOutput = false;
     }
 
+    ASIOCallbacks asioCallbacks;
+    asioCallbacks.bufferSwitch = &LTWindowsASIODriver::AsioCallbackBufferSwitch;
+    asioCallbacks.sampleRateDidChange = &LTWindowsASIODriver::AsioCallbackSampleRateDidChange;
+    asioCallbacks.asioMessage = &LTWindowsASIODriver::AsioCallbackAsioMessages;
+    asioCallbacks.bufferSwitchTimeInfo = &LTWindowsASIODriver::AsioCallbackbufferSwitchTimeInfo;
+
+    if (ASIOCreateBuffers(m_pBufferInfos, totalChannels, preferredSize, &asioCallbacks) != ASE_OK)
+    {
+        m_bLoaded = false;
+    }
+
+    long inputLatency;
+    long outputLatency;
+
+    // It is possible that there will not be valid latencies until after ASIO buffer creation
+    if (ASIOGetLatencies(&inputLatency, &outputLatency) != ASE_OK)
+    {
+        m_bLoaded = false;
+
+        return m_bLoaded;
+    }
+
     Open(inputChannels, outputChannels, minSize, maxSize, preferredSize, granularity, inputLatency, outputLatency, sampleRate);
 
     return m_bLoaded;
-}
-
-bool LTWindowsASIODriver::StartRead(int inputChannel)
-{
-    return false;
 }
 
 uint64_t LTWindowsASIODriver::GetTime(void)
@@ -306,36 +306,36 @@ ASIOTime* LTWindowsASIODriver::AsioCallbackbufferSwitchTimeInfo(ASIOTime* timeIn
     LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
     LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
 
-    m_TimeInfo = *timeInfo;
+    driver->m_TimeInfo = *timeInfo;
 
     if (timeInfo->timeInfo.flags & kSystemTimeValid)
     {
-        m_fNanoSeconds = ASIO64toDouble(timeInfo->timeInfo.systemTime);
+        driver->m_fNanoSeconds = ASIO64toDouble(timeInfo->timeInfo.systemTime);
     }
     else
     {
-        m_fNanoSeconds = 0;
+        driver->m_fNanoSeconds = 0;
     }
 
     if (timeInfo->timeInfo.flags & kSamplePositionValid)
     {
-        m_fSamples = ASIO64toDouble(timeInfo->timeInfo.samplePosition);
+        driver->m_fSamples = ASIO64toDouble(timeInfo->timeInfo.samplePosition);
     }
     else
     {
-        m_fSamples = 0;
+        driver->m_fSamples = 0;
     }
 
     if (timeInfo->timeCode.flags & kTcValid)
     {
-        m_fTcSamples = ASIO64toDouble(timeInfo->timeCode.timeCodeSamples);
+        driver->m_fTcSamples = ASIO64toDouble(timeInfo->timeCode.timeCodeSamples);
     }
     else
     {
-        m_fTcSamples = 0;
+        driver->m_fTcSamples = 0;
     }
 
-    m_uSystemRefrenceTime = GetTime();
+    driver->m_uSystemRefrenceTime = driver->GetTime();
 
     // finally if the driver supports the ASIOOutputReady() optimization, do it here, all data are in place
     if (driver->m_bPostOutput)

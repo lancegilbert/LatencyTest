@@ -47,20 +47,18 @@ public:
 
     virtual bool Initialize(int driverID, QString name);
     virtual bool Load(void);
-    virtual bool StartRead(int inputChannel);
 
     uint64_t GetTime(void);
 
-    void AsioCallbackBufferSwitch(long index, ASIOBool processNow);
-    void AsioCallbackSampleRateDidChange(ASIOSampleRate sampleRate);
-    long AsioCallbackAsioMessages(long selector, long value, void* message, double* opt);
-    ASIOTime* AsioCallbackbufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool processNow);
+    static void AsioCallbackBufferSwitch(long index, ASIOBool processNow);
+    static void AsioCallbackSampleRateDidChange(ASIOSampleRate sampleRate);
+    static long AsioCallbackAsioMessages(long selector, long value, void* message, double* opt);
+    static ASIOTime* AsioCallbackbufferSwitchTimeInfo(ASIOTime* timeInfo, long index, ASIOBool processNow);
 
 private:
     AsioDrivers* m_pAsioDrivers;
+    ASIOBufferInfo* m_pBufferInfos;
 
-    QList<ASIOBufferInfo*> m_InputBufferInfos;
-    QList<ASIOBufferInfo*> m_OutputBufferInfos;
     ASIOTime m_TimeInfo;
     double m_fNanoSeconds;
     double m_fSamples;

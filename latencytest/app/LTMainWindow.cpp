@@ -313,12 +313,12 @@ void LTMainWindow::initializeLatencyTestPanel(void)
                 newRow->asioInputChannelSpinBox->setMaximum(driver->GetNumInputChannels());
             }
 
-            latencyTestGridLayout->addWidget(newRow->enableCheckBox, idx + 1, 1);
-            latencyTestGridLayout->addWidget(newRow->midiOutLabel, idx + 1, 2);
-            latencyTestGridLayout->addWidget(newRow->midiChannelSpinBox, idx + 1, 3);
-            latencyTestGridLayout->addWidget(newRow->asioDriverLabel, idx + 1, 4);
-            latencyTestGridLayout->addWidget(newRow->asioInputChannelSpinBox, idx + 1, 5);
-            latencyTestGridLayout->addWidget(newRow->latencyLabel, idx + 1, 6);
+            latencyTestGridLayout->addWidget(newRow->enableCheckBox, idx + 1, 0);
+            latencyTestGridLayout->addWidget(newRow->midiOutLabel, idx + 1, 1);
+            latencyTestGridLayout->addWidget(newRow->midiChannelSpinBox, idx + 1, 2);
+            latencyTestGridLayout->addWidget(newRow->asioDriverLabel, idx + 1, 3);
+            latencyTestGridLayout->addWidget(newRow->asioInputChannelSpinBox, idx + 1, 4);
+            latencyTestGridLayout->addWidget(newRow->latencyLabel, idx + 1, 5);
         }
     }
 
