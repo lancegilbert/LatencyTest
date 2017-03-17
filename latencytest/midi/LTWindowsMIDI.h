@@ -25,9 +25,21 @@ public:
 
     virtual bool Initialize(int deviceID);
 
+    virtual bool OpenDevice(void);
+    virtual bool CloseDevice(void);
+
+    bool OpenStream(void);
+    bool CloseStream(void);
+
 private:
     MIDIINCAPS m_InCaps;
     MMRESULT m_Result;
+
+    HMIDIOUT m_DeviceHandle;
+    HMIDISTRM m_StreamHandle;
+
+    bool m_bDeviceOpened;
+    bool m_bStreamOpened;
 };
 
 class LTWindowsMIDIOutDevice : public LTMIDIOutDevice
@@ -40,8 +52,8 @@ public:
     virtual bool SendMIDIMessage(uint16_t low, uint16_t high);
     virtual bool SendMIDIStream(QByteArray buffer);
 
-    bool OpenDevice(void);
-    bool CloseDevice(void);
+    virtual bool OpenDevice(void);
+    virtual bool CloseDevice(void);
 
     bool OpenStream(void);
     bool CloseStream(void);

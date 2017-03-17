@@ -8,6 +8,7 @@ CONFIG -= flat
 QT = core gui widgets
 
 INCLUDEPATH += 	"$$_PRO_FILE_PWD_/" \
+				"$$_PRO_FILE_PWD_/../external/rtaudio/rtaudio" \
 				"$$_PRO_FILE_PWD_/../external/asiosdk/ASIOSDK2.3" \
 				"$$_PRO_FILE_PWD_/../external/asiosdk/ASIOSDK2.3\common" \
 				"$$_PRO_FILE_PWD_/../external/asiosdk/ASIOSDK2.3\host" \
@@ -19,7 +20,8 @@ SOURCES += 	./app/LTApplication.cpp \
 			./midi/LTWindowsMIDI.cpp \
 			./midi/LTMIDIDevice.cpp \
 			./audio/LTAudioDriver.cpp \
-			./audio/LTWindowsASIO.cpp
+			./audio/LTWindowsASIO.cpp \
+			./audio/LTRTAudio.cpp
 
 HEADERS += 	./app/LTApplication.h \
 			./app/LTMainWindow.h \
@@ -27,7 +29,8 @@ HEADERS += 	./app/LTApplication.h \
 			./midi/LTWindowsMIDI.h\
 			./midi/LTMIDIDevice.h \
 			./audio/LTAudioDriver.h \
-			./audio/LTWindowsASIO.h
+			./audio/LTWindowsASIO.h \
+			./audio/LTRTAudio.h
 
 win32*:contains(QMAKE_HOST.arch, x86_64): {
 
@@ -35,10 +38,12 @@ win32*:contains(QMAKE_HOST.arch, x86_64): {
 
     CONFIG(debug, debug|release) {
 		DESTDIR = ./bin/x64/debug
+		LIBS += ../external/rtaudio/lib/x64/rtaudiod.lib
 		LIBS += ../external/asiosdk/lib/x64/asiosdkd.lib
     } 
     else {
     	DESTDIR = ./bin/x64/release
+    	LIBS += ../external/rtaudio/lib/x64/rtaudio.lib
     	LIBS += ../external/asiosdk/lib/x64/asiosdk.lib
     }
 }

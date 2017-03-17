@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>247</width>
-    <height>34</height>
+    <width>249</width>
+    <height>51</height>
    </rect>
   </property>
   <property name="sizePolicy">
-   <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
+   <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
     <horstretch>0</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
@@ -91,18 +91,12 @@
     </widget>
    </item>
    <item>
-    <widget class="QSpinBox" name="asioInputChannelSpinBox">
-     <property name="enabled">
-      <bool>false</bool>
-     </property>
+    <widget class="QComboBox" name="asioInputChannelComboBox">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
-     </property>
-     <property name="maximum">
-      <number>0</number>
      </property>
     </widget>
    </item>
@@ -118,7 +112,7 @@
       <string/>
      </property>
      <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
      </property>
     </widget>
    </item>

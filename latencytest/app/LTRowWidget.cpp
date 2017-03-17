@@ -12,6 +12,6 @@ LTRowWidget::~LTRowWidget(void)
     delete midiOutLabel;
     delete midiChannelSpinBox;
     delete asioDriverLabel;
-    delete asioInputChannelSpinBox;
+    delete asioInputChannelComboBox;
     delete latencyLabel;
 }

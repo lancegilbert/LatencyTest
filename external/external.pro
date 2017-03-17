@@ -2,5 +2,5 @@ cache()
 
 TEMPLATE = subdirs
 
-SUBDIRS += asiosdk
+SUBDIRS += asiosdk rtaudio
 

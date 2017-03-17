@@ -51,6 +51,7 @@ public:
     virtual bool Load(void);
 
     uint64_t GetTime(void);
+    QString GetChannelName(int index);
 
     void StartSignalDetectTimer(int inputChannel);
 
@@ -65,9 +66,14 @@ private:
     void AsioCallbackBufferSwitch_Internal(long index, ASIOBool processNow);
     ASIOTime* AsioCallbackbufferSwitchTimeInfo_Internal(ASIOTime* timeInfo, long index, ASIOBool processNow);
 
+    void ConvertSampleToNative(ASIOSampleType inputType, void* inputBuffer, ASIOSampleType outputType, void* outputBuffer);
+
+    void ProcessSignal(long index);
+
 private:
     AsioDrivers* m_pAsioDrivers;
     ASIOBufferInfo* m_pBufferInfos;
+    ASIOChannelInfo* m_pChannelInfos;
 
     ASIOTime m_TimeInfo;
     double m_fNanoSeconds;
@@ -81,8 +87,44 @@ private:
     int m_iSignalDetectedTimerInputChannel;
     int64_t m_iSignalDetectedNsecsElapsed;
 
+    double *m_pInputSamples;
+    double *m_pOutputSamples;
+
+    int m_iDrainIndex;
+    bool m_bDraining;
 
     bool m_bLoaded;
 };
+
+// This is taken directly from RTAudio.h until time is taken to write a new implementation
+#pragma pack(push, 1)
+class LTS24 {
+
+protected:
+    unsigned char c3[3];
+
+public:
+    LTS24() {}
+
+    LTS24& operator = (const int& i) {
+        c3[0] = (i & 0x000000ff);
+        c3[1] = (i & 0x0000ff00) >> 8;
+        c3[2] = (i & 0x00ff0000) >> 16;
+        return *this;
+    }
+
+    LTS24(const LTS24& v) { *this = v; }
+    LTS24(const double& d) { *this = (int)d; }
+    LTS24(const float& f) { *this = (int)f; }
+    LTS24(const signed short& s) { *this = (int)s; }
+    LTS24(const char& c) { *this = (int)c; }
+
+    int asInt() {
+        int i = c3[0] | (c3[1] << 8) | (c3[2] << 16);
+        if (i & 0x800000) i |= ~0xffffff;
+        return i;
+    }
+};
+#pragma pack(pop)
 
 #endif /* _LTWINDOWSASIO_H_ */

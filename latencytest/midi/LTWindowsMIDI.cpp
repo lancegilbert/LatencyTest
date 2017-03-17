@@ -61,6 +61,8 @@ void LTWindowsMIDI::InitializeMIDIOut(void)
 
 LTWindowsMIDIInDevice::LTWindowsMIDIInDevice()
     : LTMIDIInDevice()
+    , m_bDeviceOpened(false)
+    , m_bStreamOpened(false)
 {
 
 }
@@ -83,6 +85,78 @@ bool LTWindowsMIDIInDevice::Initialize(int deviceID)
     name = QString::fromWCharArray(m_InCaps.szPname);
 
     return LTMIDIInDevice::Initialize(deviceID, m_InCaps.wMid, m_InCaps.wPid, m_InCaps.vDriverVersion, name);
+}
+
+
+bool LTWindowsMIDIInDevice::OpenDevice(void)
+{
+    if (m_bDeviceOpened)
+    {
+        CloseDevice();
+        m_bDeviceOpened = false;
+    }
+
+    MMRESULT result = midiOutOpen(&m_DeviceHandle, GetDeviceID(), NULL, NULL, CALLBACK_NULL);
+
+    if (result != MMSYSERR_NOERROR)
+    {
+        m_bDeviceOpened = false;
+
+        return m_bDeviceOpened;
+    }
+
+    m_bDeviceOpened = true;
+    return m_bDeviceOpened;
+}
+
+bool LTWindowsMIDIInDevice::CloseDevice(void)
+{
+    MMRESULT result = midiOutClose(m_DeviceHandle);
+
+    if (result != MMSYSERR_NOERROR)
+    {
+        return false;
+    }
+
+    m_bDeviceOpened = false;
+    return true;
+}
+
+
+bool LTWindowsMIDIInDevice::OpenStream(void)
+{
+    if (m_bStreamOpened)
+    {
+        CloseDevice();
+        m_bStreamOpened = false;
+    }
+
+    UINT deviceID;
+
+    MMRESULT result = midiStreamOpen(&m_StreamHandle, &deviceID, 1, NULL, NULL, CALLBACK_NULL);
+
+    if (result != MMSYSERR_NOERROR)
+    {
+        m_bStreamOpened = false;
+
+        return m_bStreamOpened;
+    }
+
+    m_bStreamOpened = true;
+    return m_bStreamOpened;
+}
+
+bool LTWindowsMIDIInDevice::CloseStream(void)
+{
+    MMRESULT result = midiStreamClose(m_StreamHandle);
+
+    if (result != MMSYSERR_NOERROR)
+    {
+        return false;
+    }
+
+    m_bStreamOpened = false;
+    return true;
 }
 
 LTWindowsMIDIOutDevice::LTWindowsMIDIOutDevice()
@@ -115,11 +189,6 @@ bool LTWindowsMIDIOutDevice::Initialize(int deviceID)
 
 bool LTWindowsMIDIOutDevice::SendMIDIMessage(uint16_t low, uint16_t high)
 {
-    if (!OpenDevice())
-    {
-        return false;
-    }
-
     DWORD message = (low | (high << 16));
     
     MMRESULT result = midiOutShortMsg(m_DeviceHandle, message);
@@ -129,8 +198,6 @@ bool LTWindowsMIDIOutDevice::SendMIDIMessage(uint16_t low, uint16_t high)
         CloseDevice();
         return false;
     }
-
-    CloseDevice();
 
     return true;
 }

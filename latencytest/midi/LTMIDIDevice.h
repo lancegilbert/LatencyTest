@@ -7,7 +7,8 @@
 enum LTMIDI_Commands
 {
     LTMIDI_Command_NoteOn = 0x0009,
-    LTMIDI_Command_NoteOff = 0x0109, // Because of "Running Mode" this needs to be the same command as NoteOn but still differentiatable
+    LTMIDI_Command_NoteOff = 0x0008,
+    LTMIDI_Command_NoteOffRunning = 0x0109, // Because of "Running Mode" this needs to be the same command as NoteOn but still differentiatable
     LTMIDI_Command_INAVLID = 0xFFFF
 };
 
@@ -61,6 +62,9 @@ public:
     int GetPID(void) { return m_iPID; }
     int GetDriverVersion(void) { return m_iDriverVersion; }
     QString GetName(void) { return m_sName; }
+
+    virtual bool OpenDevice(void) = 0;
+    virtual bool CloseDevice(void) = 0;
 
 protected:
     int m_iDeviceID;
