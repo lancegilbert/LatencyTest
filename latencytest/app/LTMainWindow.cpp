@@ -135,6 +135,15 @@ void LTMainWindow::onAsioCurrentIndexChanged(int index)
 
 }
 
+// Taken from http://stackoverflow.com/a/19695285
+template <typename It>
+typename std::iterator_traits<It>::value_type Median(It begin, It end)
+{
+    auto size = std::distance(begin, end);
+        std::nth_element(begin, begin + size / 2, end);
+    return *std::next(begin, size / 2);
+}
+
 void LTMainWindow::onLatencyTestMeasurePushed(void)
 {
     LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
@@ -154,9 +163,10 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
                 return;
             }
 
-            static int testCount = 50;
+            int testCount = testIterationsSpinBox->value();
+            float testsPerSecond = testsPerSecondSpinBox->value();
 
-            double msecsElapsed = 0;
+            std::vector<double> elapsedValues;
 
             for(int idx = 0; idx < testCount; idx++)
             {
@@ -176,16 +186,26 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
                     return;
                 }
 
-                double newMsecsElapsed = (double)nsecsElapsed / 1000000.0;
+                double msecsElapsed = (double)nsecsElapsed / 1000000.0;
 
-                msecsElapsed = (msecsElapsed + newMsecsElapsed) / 2.0;
+                float delay = ((1.0f / testsPerSecond) * 1000.0f) - msecsElapsed;
+
+                QTime dieTime = QTime::currentTime().addMSecs(delay);
+                while (QTime::currentTime() < dieTime)
+                {
+                    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+                }
+
+                elapsedValues.push_back(msecsElapsed);
             }
 
             device->CloseDevice();
 
+            double averageMsecsElapsed = Median(elapsedValues.begin(), elapsedValues.end());
+
             double inputLatency = (driver->GetInputLatency() / driver->GetSampleRate()) * 1000.0f;
-            curRow->midiLatencyLabel->setText(QString("%1ms").arg(msecsElapsed - inputLatency));
-            curRow->totalLatencyLabel->setText(QString("%1ms").arg(msecsElapsed));
+            curRow->midiLatencyLabel->setText(QString("%1ms").arg(averageMsecsElapsed - inputLatency));
+            curRow->totalLatencyLabel->setText(QString("%1ms").arg(averageMsecsElapsed));
 
             //latencyTestGridLayout->removeWidget(curRow->asioDriverLabel);
             //latencyTestGridLayout->removeWidget(curRow->asioInputChannelSpinBox);
