@@ -62,6 +62,8 @@ public:
 
     int64_t WaitForSignalDetected(void);
 
+    bool DetectNoiseFloor(int inputChannel);
+
 private:
     void AsioCallbackBufferSwitch_Internal(long index, ASIOBool processNow);
     ASIOTime* AsioCallbackbufferSwitchTimeInfo_Internal(ASIOTime* timeInfo, long index, ASIOBool processNow);
@@ -83,6 +85,7 @@ private:
     bool m_bPostOutput;
 
     QMutex m_SignalDetectedMutex;
+    QMutex m_NoiseFloorDetectedMutex;
     QElapsedTimer m_SignalDetectedTimer;
     int m_iSignalDetectedTimerInputChannel;
     int64_t m_iSignalDetectedNsecsElapsed;
@@ -90,8 +93,9 @@ private:
     double *m_pInputSamples;
     double *m_pOutputSamples;
 
-    int m_iDrainIndex;
-    bool m_bDraining;
+    QAtomicInt m_iNoiseFloorDetectChannel;
+    QList<double> m_NoiseFloors;
+    QElapsedTimer m_NoiseFloorDetectionTimer;
 
     bool m_bLoaded;
 };

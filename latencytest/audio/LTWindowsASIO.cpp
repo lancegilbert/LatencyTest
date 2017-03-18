@@ -90,10 +90,10 @@ LTWindowsASIODriver::LTWindowsASIODriver(AsioDrivers* asioDrivers)
     , m_iSignalDetectedTimerInputChannel(0)
     , m_pInputSamples(nullptr)
     , m_pOutputSamples(nullptr)
-    , m_iDrainIndex(2)
-    , m_bDraining(false)
+    , m_iNoiseFloorDetectChannel(-1)
 {
-    
+    // Start this out locked, we unlock it once we have detected the noise floor in response to a request
+    m_NoiseFloorDetectedMutex.lock();
 }
 
 LTWindowsASIODriver::~LTWindowsASIODriver(void)
@@ -155,6 +155,8 @@ bool LTWindowsASIODriver::Load(void)
         return m_bLoaded;
     }
 
+    m_NoiseFloors.clear();
+
     int totalChannels = inputChannels + outputChannels;
     m_pBufferInfos = new ASIOBufferInfo[totalChannels];
     m_pChannelInfos = new ASIOChannelInfo[totalChannels];
@@ -165,6 +167,7 @@ bool LTWindowsASIODriver::Load(void)
         {
             m_pBufferInfos[idx].isInput = ASIOTrue;
             m_pBufferInfos[idx].channelNum = idx;
+            m_NoiseFloors.append(0.005);
         }
         else
         {
@@ -252,9 +255,6 @@ bool LTWindowsASIODriver::Load(void)
         return m_bLoaded;
     }
 
-    m_iDrainIndex = 2;
-    m_bDraining = false;
-
     return m_bLoaded;
 }
 
@@ -304,6 +304,22 @@ int64_t LTWindowsASIODriver::WaitForSignalDetected(void)
     m_SignalDetectedMutex.unlock();
 
     return m_iSignalDetectedNsecsElapsed;
+}
+
+bool LTWindowsASIODriver::DetectNoiseFloor(int inputChannel)
+{
+    if(m_iNoiseFloorDetectChannel >= 0)
+    {
+        return false;
+    }
+
+    m_NoiseFloorDetectionTimer.restart();
+
+    m_iNoiseFloorDetectChannel = inputChannel;
+
+    m_NoiseFloorDetectedMutex.lock();
+
+    return true;
 }
 
 void LTWindowsASIODriver::AsioCallbackBufferSwitch_Internal(long index, ASIOBool processNow)
@@ -363,18 +379,46 @@ ASIOTime* LTWindowsASIODriver::AsioCallbackbufferSwitchTimeInfo_Internal(ASIOTim
 
 void LTWindowsASIODriver::ProcessSignal(long index)
 {
-    if (m_SignalDetectedTimer.isValid())
+    if(m_iNoiseFloorDetectChannel >= 0)
+    {
+        ConvertSampleToNative(m_pChannelInfos[m_iNoiseFloorDetectChannel].type, m_pBufferInfos[m_iNoiseFloorDetectChannel].buffers[index], ASIOSTFloat64LSB, m_pInputSamples);
+
+        for(int idx = 0; idx < GetPreferredSize(); idx++)
+        {
+            int inputChannel = m_iNoiseFloorDetectChannel;
+            double currentNoiseFloor = m_NoiseFloors.at(inputChannel);
+            m_NoiseFloors.replace(inputChannel, max(abs(currentNoiseFloor), abs(m_pInputSamples[idx])));
+        }
+
+        static float noiseFloorDetectTime = (1.0 * 1000.0); // 1 Second in milliseconds
+
+        if(m_NoiseFloorDetectionTimer.elapsed() > noiseFloorDetectTime)
+        {
+            m_iNoiseFloorDetectChannel = -1;
+            m_NoiseFloorDetectedMutex.unlock();
+        }
+    }
+    else if (m_SignalDetectedTimer.isValid())
     {
         m_iSignalDetectedNsecsElapsed = m_SignalDetectedTimer.nsecsElapsed();
 
         ConvertSampleToNative(m_pChannelInfos[m_iSignalDetectedTimerInputChannel].type, m_pBufferInfos[m_iSignalDetectedTimerInputChannel].buffers[index], ASIOSTFloat64LSB, m_pInputSamples);
 
-        static double edgeThreshold = 0.005;
+        double threshold = m_NoiseFloors.at(m_iSignalDetectedTimerInputChannel);
 
-        if (m_pInputSamples[0] > edgeThreshold)
-        {
-            m_SignalDetectedTimer.invalidate();
-            m_SignalDetectedMutex.unlock();
+        static double margin = 0.25;
+
+        threshold = threshold + (threshold * margin);
+
+        for (int idx = 0; idx < GetPreferredSize(); idx++)
+        {   
+            if (abs(m_pInputSamples[idx]) > threshold)
+            {
+                m_SignalDetectedTimer.invalidate();
+                m_SignalDetectedMutex.unlock();
+
+                break;
+            }
         }
     }
 }

@@ -163,53 +163,59 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
                 return;
             }
 
-            int testCount = testIterationsSpinBox->value();
-            float testsPerSecond = testsPerSecondSpinBox->value();
+            int audioInputChannel = curRow->asioInputChannelComboBox->currentIndex();
 
-            std::vector<double> elapsedValues;
-
-            for(int idx = 0; idx < testCount; idx++)
+            if (!driver->DetectNoiseFloor(audioInputChannel))
             {
-                driver->StartSignalDetectTimer(curRow->asioInputChannelComboBox->currentIndex());
-
-                int midiChannel = curRow->midiChannelSpinBox->value();
-
-                if (!device->SendMIDINote(LTMIDI_Command_NoteOn, midiChannel, LTMIDI_Note_C, 3, 0x40))
-                {
-                    return;
-                }
-
-                int64_t nsecsElapsed = driver->WaitForSignalDetected();
-
-                if (!device->SendMIDINote(LTMIDI_Command_NoteOffRunning, midiChannel, LTMIDI_Note_C, 3, 0x00))
-                {
-                    return;
-                }
-
-                double msecsElapsed = (double)nsecsElapsed / 1000000.0;
-
-                float delay = ((1.0f / testsPerSecond) * 1000.0f) - msecsElapsed;
-
-                QTime dieTime = QTime::currentTime().addMSecs(delay);
-                while (QTime::currentTime() < dieTime)
-                {
-                    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
-                }
-
-                elapsedValues.push_back(msecsElapsed);
+                curRow->midiLatencyLabel->setText(QString("Can't Detect"));
+                curRow->totalLatencyLabel->setText(QString("Noise Floor"));
             }
+            else
+            {
+                int testCount = testIterationsSpinBox->value();
+                float testsPerSecond = testsPerSecondSpinBox->value();
 
-            device->CloseDevice();
+                std::vector<double> elapsedValues;
 
-            double averageMsecsElapsed = Median(elapsedValues.begin(), elapsedValues.end());
+                for(int idx = 0; idx < testCount; idx++)
+                {
+                    driver->StartSignalDetectTimer(audioInputChannel);
 
-            double inputLatency = (driver->GetInputLatency() / driver->GetSampleRate()) * 1000.0f;
-            curRow->midiLatencyLabel->setText(QString("%1ms").arg(averageMsecsElapsed - inputLatency));
-            curRow->totalLatencyLabel->setText(QString("%1ms").arg(averageMsecsElapsed));
+                    int midiChannel = curRow->midiChannelSpinBox->value();
 
-            //latencyTestGridLayout->removeWidget(curRow->asioDriverLabel);
-            //latencyTestGridLayout->removeWidget(curRow->asioInputChannelSpinBox);
-            //latencyTestGridLayout->removeWidget(curRow->latencyLabel);
+                    if (!device->SendMIDINote(LTMIDI_Command_NoteOn, midiChannel, LTMIDI_Note_C, 3, 0x40))
+                    {
+                        return;
+                    }
+
+                    int64_t nsecsElapsed = driver->WaitForSignalDetected();
+
+                    if (!device->SendMIDINote(LTMIDI_Command_NoteOffRunning, midiChannel, LTMIDI_Note_C, 3, 0x00))
+                    {
+                        return;
+                    }
+
+                    double msecsElapsed = (double)nsecsElapsed / 1000000.0;
+
+                    float delay = ((1.0f / testsPerSecond) * 1000.0f) - msecsElapsed;
+
+                    QTime dieTime = QTime::currentTime().addMSecs(delay);
+                    while (QTime::currentTime() < dieTime)
+                    {
+                        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+                    }
+
+                    elapsedValues.push_back(msecsElapsed);
+                }
+
+                device->CloseDevice();
+
+                double averageMsecsElapsed = Median(elapsedValues.begin(), elapsedValues.end());
+
+                double inputLatency = (driver->GetInputLatency() / driver->GetSampleRate()) * 1000.0f;
+                curRow->midiLatencyLabel->setText(QString("%1ms").arg(averageMsecsElapsed - inputLatency));
+                curRow->totalLatencyLabel->setText(QString("%1ms").arg(averageMsecsElapsed));
+            }
         }
     }
 }
