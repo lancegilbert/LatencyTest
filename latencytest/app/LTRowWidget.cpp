@@ -8,10 +8,12 @@ LTRowWidget::LTRowWidget(QWidget *parent /* = nullptr */)
 
 LTRowWidget::~LTRowWidget(void)
 {
+    delete removeButton;
     delete enableCheckBox;
-    delete midiOutLabel;
+    delete midiOutComboBox;
     delete midiChannelSpinBox;
     delete asioDriverLabel;
     delete asioInputChannelComboBox;
-    delete latencyLabel;
+    delete midiLatencyLabel;
+    delete totalLatencyLabel;
 }

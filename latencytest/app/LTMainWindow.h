@@ -7,6 +7,7 @@
 #include <QSettings>
 #include <QLabel>
 #include <QList>
+#include <QSignalMapper>
 
 #include "Windows.h"
 
@@ -48,6 +49,8 @@ public:
 private:
     void initTimecounter(void);
 
+    void UpdateLatencyTestAsio(void);
+
     void initializeMidiInPanel(void);
     void initializeMidiOutPanel(void);
     void initializeAsioPanel(void);
@@ -64,6 +67,9 @@ public slots:
     void onRefreshMIDIOutPushed(void);
     void onAsioCurrentIndexChanged(int index);
     void onLatencyTestMeasurePushed(void);
+
+    void onAddLatencyTestPushed(void);
+    void onRemoveLatencyTestPushed(int rowIdx);
 
 public:
 
@@ -100,6 +106,8 @@ private:
     class LTWindowsMIDI *m_pWindowsMIDI;
  
     QList<LTRowWidget*> m_LTRowWidgets;
+
+    QSignalMapper m_removeLatencyTestButtonSignalMapper;
 
 protected:
 	virtual bool event (QEvent* lEvent); 
