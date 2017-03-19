@@ -92,7 +92,7 @@ void LTApplication::setupMainWindow(void)
 
     m_pMainWindow->show();
 
-    loadSettings(getSettings(), false, false);
+    loadSettings(getSettings(), false);
 
     processEvents();
 
@@ -102,15 +102,15 @@ void LTApplication::setupMainWindow(void)
 }
 
 
-void LTApplication::loadSettings(QSettings *settings, bool reset, bool propigateSharedSettings)
+void LTApplication::loadSettings(QSettings *settings, bool reset)
 {
     if (m_pMainWindow)
     {
-        m_pMainWindow->loadSettings(settings, reset, propigateSharedSettings);
+        m_pMainWindow->loadSettings(settings, reset);
     }
 }
 
-void LTApplication::saveSettings(QSettings *settings, bool saveAutoSettings, bool propigateSharedSettings, bool isOnShutdown /* = false */)
+void LTApplication::saveSettings(QSettings *settings, bool isOnShutdown /* = false */)
 {
     if (m_pMainWindow)
     {
@@ -125,25 +125,17 @@ void LTApplication::saveSettings(QSettings *settings, bool saveAutoSettings, boo
 
                 switch (notificationDialog.exec())
                 {
-                case QMessageBox::Yes:
-                {
-                    m_pMainWindow->saveSettings(settings, saveAutoSettings, propigateSharedSettings);
-                }
-                case QMessageBox::No:
-                default:
-                {
-                    m_pMainWindow->saveSettings(settings, false, false);
-                }
+                    case QMessageBox::Yes:
+                    {
+                        m_pMainWindow->saveSettings(settings);
+                    }
+                    case QMessageBox::No:
+                    default:
+                    {
+
+                    }
                 }
             }
-            else
-            {
-                m_pMainWindow->saveSettings(settings, false, false);
-            }
-        }
-        else
-        {
-            m_pMainWindow->saveSettings(settings, saveAutoSettings, propigateSharedSettings);
         }
     }
 }
@@ -177,7 +169,7 @@ int main(int argc, char *argv[])
 
     int retVal = pLTApp->exec();
 
-    pLTApp->saveSettings(pLTApp->getSettings(), false, false, true);
+    pLTApp->saveSettings(pLTApp->getSettings(), true);
 
     delete pLTApp;
 

@@ -23,8 +23,8 @@ public:
 	bool startupFailed(void) { return m_bStartupFailed; }
 
     QSettings* getSettings() { return &m_settings; }
-	virtual void saveSettings(QSettings *settings, bool saveAutoSettings, bool propigateSharedSettings, bool isOnShutdown = false);
-	virtual void loadSettings(QSettings *settings, bool reset, bool propigateSharedSettings);
+	virtual void saveSettings(QSettings *settings, bool isOnShutdown = false);
+	virtual void loadSettings(QSettings *settings, bool reset);
 
     virtual QMainWindow* getMainWindow(void);
 

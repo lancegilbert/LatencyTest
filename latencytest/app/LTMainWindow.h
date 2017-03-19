@@ -33,15 +33,11 @@ public:
     QString getLoadPath(void) { return m_sStartingLoadPath; }
     void setLoadPath(QString path) { m_sStartingLoadPath = path; }
 
-    void updateFps(void);
     void updateStatusBar(void);
     float getTimeInSeconds();
-    float getAvgFps(void) { return m_fAvgFps; }
-    float getPrevFps(void);
-    float getLastFrameDelta() { return m_fFrameDeltaInSeconds; }
  
-	void saveSettings(QSettings *settings, bool saveAutoSettings, bool propigateSharedSettings);
-	void loadSettings(QSettings *settings, bool reset, bool propigateSharedSettings);
+	void saveSettings(QSettings *settings);
+	void loadSettings(QSettings *settings, bool reset);
 
     void setLoadComplete(void);
     bool getLoadComplete(void) { return m_bInitialPrefsLoadComplete; }
@@ -59,15 +55,12 @@ private:
 public slots:
     void onClickHelpAbout(void);
 
-    void onAppSaveSettings(void);
-    void onAppCancelSettings(void);
-    void onAppRestoreSettings(void);
-
     void onRefreshMIDIInPushed(void);
     void onRefreshMIDIOutPushed(void);
     void onAsioCurrentIndexChanged(int index);
     void onLatencyTestMeasurePushed(void);
     void onLatencyTestCancelPushed(void);
+    void onSaveSettingsPushed(void);
 
     void onAddLatencyTestPushed(void);
     void onRemoveLatencyTestPushed(int rowIdx);
@@ -94,12 +87,6 @@ private:
     QString m_sLoadedFilePath;
 
     bool m_bInitialPrefsLoadComplete;
-
-    int m_iCurFpsIdx;
-    float m_fFps[MAXFPSSAMPLES];
-    float m_fAvgFps;
-    float m_fLastFrameTime;
-    float m_fFrameDeltaInSeconds;
 
     LARGE_INTEGER m_iTimeAtStart;
     LARGE_INTEGER m_iTicksPerSecond;

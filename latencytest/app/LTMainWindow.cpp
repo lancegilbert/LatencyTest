@@ -62,11 +62,15 @@ LTMainWindow::LTMainWindow(LTApplication* pApp, QDateTime startupTime)
     connect(measureLatencyButton, SIGNAL(clicked()), this, SLOT(onLatencyTestMeasurePushed()));
     connect(addButton, SIGNAL(clicked()), this, SLOT(onAddLatencyTestPushed()));
     connect(cancelButton, SIGNAL(clicked()), this, SLOT(onLatencyTestCancelPushed()));
+    connect(saveSettingsButton, SIGNAL(clicked()), this, SLOT(onSaveSettingsPushed()));
+    
 
     initializeMidiInPanel();
     initializeMidiOutPanel();
     initializeAsioPanel();
     initializeLatencyTestPanel();
+
+    loadSettings(m_pApplication->getSettings(), false);
 
     cancelButton->setText("Panic");
 }
@@ -135,7 +139,6 @@ void LTMainWindow::onAsioCurrentIndexChanged(int index)
     LTWindowsASIO::UnlockLTWindowsAsio();
 
     UpdateLatencyTestAsio();
-
 }
 
 
@@ -156,6 +159,11 @@ void LTMainWindow::onLatencyTestCancelPushed(void)
     {
         m_pWindowsMIDI->SendMIDIPanic(-1);
     }
+}
+
+void LTMainWindow::onSaveSettingsPushed(void)
+{
+    saveSettings(m_pApplication->getSettings());
 }
 
 // Taken from http://stackoverflow.com/a/19695285
@@ -478,7 +486,7 @@ void LTMainWindow::initializeLatencyTestPanel(void)
     onAddLatencyTestPushed();
 }
 
-void LTMainWindow::loadSettings(QSettings *settings, bool reset, bool propigateSharedSettings)
+void LTMainWindow::loadSettings(QSettings *settings, bool reset)
 {
     settings->beginGroup("Misc");
     float savedSettingsVersion = 0.0f;
@@ -551,9 +559,29 @@ void LTMainWindow::loadSettings(QSettings *settings, bool reset, bool propigateS
 
     settings->endGroup();
 
+    settings->beginGroup("Asio");
+
+    if (settings->contains("DeviceName"))
+    {
+        for (int idx = 0; idx < asioDeviceListComboBox->count(); idx++)
+        {
+            if (QString::compare(asioDeviceListComboBox->itemText(idx), settings->value("DeviceName").toString()) == 0)
+            {
+                if(asioDeviceListComboBox->currentIndex() != idx)
+                { 
+                    asioDeviceListComboBox->setCurrentIndex(idx);
+                }
+
+                break;
+            }
+        }
+    }
+
+    settings->endGroup();
+
     if(immediateSave)
     {
-        saveSettings(settings, true, propigateSharedSettings);
+        saveSettings(settings);
     }
 }
 
@@ -562,7 +590,7 @@ void LTMainWindow::setLoadComplete(void)
     m_bInitialPrefsLoadComplete = true; 
 }
 
-void LTMainWindow::saveSettings(QSettings *settings, bool saveAutoSettings, bool propigateSharedSettings)
+void LTMainWindow::saveSettings(QSettings *settings)
 {
     settings->beginGroup("Misc");
 
@@ -590,28 +618,9 @@ void LTMainWindow::saveSettings(QSettings *settings, bool saveAutoSettings, bool
 
     settings->endGroup();
 
-    if(saveAutoSettings)
-    {
-
-    }
-}
-
-void LTMainWindow::onAppSaveSettings(void)
-{
-    QSettings *settings = ((LTApplication*)LTApplication::instance())->getSettings();
-    saveSettings(settings, true, false);
-}
-
-void LTMainWindow::onAppCancelSettings(void)
-{
-    QSettings *settings = ((LTApplication*)LTApplication::instance())->getSettings();
-    loadSettings(settings, false, false);
-}
-
-void LTMainWindow::onAppRestoreSettings(void)
-{
-    QSettings *settings = ((LTApplication*)LTApplication::instance())->getSettings();
-    loadSettings(settings, true, false);
+    settings->beginGroup("Asio");
+    settings->setValue("DeviceName", asioDeviceListComboBox->currentText());
+    settings->endGroup();
 }
 
 void LTMainWindow::initTimecounter(void)
@@ -638,142 +647,8 @@ float LTMainWindow::getTimeInSeconds(void)
     return deltaTimeInSeconds;
 }
 
-
-void LTMainWindow::updateFps(void)
-{
-    float currentFrameTime = getTimeInSeconds();
-    float delta = (currentFrameTime - m_fLastFrameTime);
-    if (delta > 0.001f)
-    {
-        m_fFrameDeltaInSeconds = delta;
-
-        m_fFps[m_iCurFpsIdx] = 1.0f / delta;
-        m_iCurFpsIdx++;
-
-        if (m_iCurFpsIdx >= MAXFPSSAMPLES)
-        {
-            m_iCurFpsIdx = 0;
-        }
-
-        float fTotalFps = 0;
-        int numSamples = 0;
-        for (int i = 0; i < MAXFPSSAMPLES; i++)
-        {
-            if (m_fFps[i] >= 0.0f)
-            {
-                fTotalFps += m_fFps[i];
-                numSamples++;
-            }
-        }
-
-        m_fAvgFps = fTotalFps / (float)numSamples;
-
-        m_fLastFrameTime = currentFrameTime;
-    }
-}
-
-float LTMainWindow::getPrevFps(void)
-{
-    // CHRISNOTE: 4 Frame Moving Average
-    float fpsTotal = 0.0f;
-    if (m_iCurFpsIdx == 0)
-    {
-        fpsTotal += m_fFps[(MAXFPSSAMPLES - 1)];
-        fpsTotal += m_fFps[(MAXFPSSAMPLES - 2)];
-        fpsTotal += m_fFps[(MAXFPSSAMPLES - 3)];
-        fpsTotal += m_fFps[(MAXFPSSAMPLES - 4)];
-    }
-    else if (m_iCurFpsIdx == 1)
-    {
-        fpsTotal += m_fFps[0];
-        fpsTotal += m_fFps[(MAXFPSSAMPLES - 1)];
-        fpsTotal += m_fFps[(MAXFPSSAMPLES - 2)];
-        fpsTotal += m_fFps[(MAXFPSSAMPLES - 3)];
-    }
-    else if (m_iCurFpsIdx == 2)
-    {
-        fpsTotal += m_fFps[1];
-        fpsTotal += m_fFps[0];
-        fpsTotal += m_fFps[(MAXFPSSAMPLES - 1)];
-        fpsTotal += m_fFps[(MAXFPSSAMPLES - 2)];
-    }
-    else if (m_iCurFpsIdx == 3)
-    {
-        fpsTotal += m_fFps[2];
-        fpsTotal += m_fFps[1];
-        fpsTotal += m_fFps[0];
-        fpsTotal += m_fFps[(MAXFPSSAMPLES - 1)];
-    }
-    else
-    {
-        fpsTotal += m_fFps[m_iCurFpsIdx - 1];
-        fpsTotal += m_fFps[m_iCurFpsIdx - 2];
-        fpsTotal += m_fFps[m_iCurFpsIdx - 3];
-        fpsTotal += m_fFps[m_iCurFpsIdx - 4];
-    }
-
-    return (fpsTotal / 4.0f);
-}
-
 void LTMainWindow::updateStatusBar(void)
 {
-    QString statusBarMessage;
-    bool firstMessage = false;
-
-    QHashIterator<QString, LTStatusBarEntry> itr(m_statusBarMessages);
-    while (itr.hasNext()) 
-    {
-        itr.next();
-
-        LTStatusBarEntry entry = itr.value();
-
-        if(!firstMessage)
-        {
-            firstMessage = true;
-        }
-        else
-        {
-            statusBarMessage.append(" | ");
-        }
-
-        statusBarMessage.append(entry.m_sString);
-
-        if(entry.m_fTimeout > 0.0f)
-        {
-            entry.m_fTimeout -= m_fFrameDeltaInSeconds;
-
-            if(entry.m_fTimeout > 0.0f)
-            {
-                m_statusBarMessages[itr.key()] = entry;
-            }
-        }
-
-        if(entry.m_fTimeout <= 0.0f)
-        {
-            m_statusBarMessages.remove(itr.key());
-        }
-    }
-
-    mainWindowStatusBar->showMessage(statusBarMessage);
-
-    QString permMsgString = QString("");
-
-    float curFps = m_fAvgFps;
-
-    if(curFps > 1.0f && curFps < 1000.0f)
-    {
-        QString fpsString;
-        fpsString.setNum(curFps, 'f', 1);
-        permMsgString.append(fpsString);
-        permMsgString.append("fps");
-        permMsgString.append("   ");
-
-        m_pPermStatusLabel->setText(permMsgString);
-    }
-    else
-    {
-        m_pPermStatusLabel->setText("   ");
-    }
 }
 
 void LTMainWindow::onClickHelpAbout(void)
