@@ -53,6 +53,8 @@ public:
     uint64_t GetTime(void);
     QString GetChannelName(int index);
 
+    void CancelSignalDetection(void);
+
     void StartSignalDetectTimer(int inputChannel);
 
     static void AsioCallbackBufferSwitch(long index, ASIOBool processNow);
@@ -87,7 +89,7 @@ private:
     QMutex m_SignalDetectedMutex;
     QMutex m_NoiseFloorDetectedMutex;
     QElapsedTimer m_SignalDetectedTimer;
-    int m_iSignalDetectedTimerInputChannel;
+    QAtomicInt m_iSignalDetectedTimerInputChannel;
     int64_t m_iSignalDetectedNsecsElapsed;
 
     double *m_pInputSamples;

@@ -44,6 +44,8 @@ public:
     class LTMIDIInDevice* GetInDevice(int deviceID);
     class LTMIDIOutDevice* GetOutDevice(int deviceID);
 
+    void SendMIDIPanic(int deviceID);
+
 protected:
     QList<class LTMIDIInDevice*> m_InDevs;
     QList<class LTMIDIOutDevice*> m_OutDevs;

@@ -87,9 +87,9 @@ LTWindowsASIODriver::LTWindowsASIODriver(AsioDrivers* asioDrivers)
     , m_fTcSamples(0.0)
     , m_uSystemRefrenceTime(0)
     , m_bPostOutput(false)
-    , m_iSignalDetectedTimerInputChannel(0)
     , m_pInputSamples(nullptr)
     , m_pOutputSamples(nullptr)
+    , m_iSignalDetectedTimerInputChannel(-1)
     , m_iNoiseFloorDetectChannel(-1)
 {
     // Start this out locked, we unlock it once we have detected the noise floor in response to a request
@@ -282,6 +282,19 @@ QString LTWindowsASIODriver::GetChannelName(int index)
     return QString("%1: %2").arg(displayChannel).arg(channelName);
 }
 
+void LTWindowsASIODriver::CancelSignalDetection(void) 
+{
+    if(m_iSignalDetectedTimerInputChannel >= 0)
+    {
+        m_iSignalDetectedTimerInputChannel = -2;
+    }
+
+    if(m_iNoiseFloorDetectChannel >= 0)
+    {
+        m_iNoiseFloorDetectChannel = -2;
+    }
+}
+
 void LTWindowsASIODriver::StartSignalDetectTimer(int inputChannel)
 {
     m_SignalDetectedMutex.lock();
@@ -301,7 +314,14 @@ void LTWindowsASIODriver::StartSignalDetectTimer(int inputChannel)
 int64_t LTWindowsASIODriver::WaitForSignalDetected(void)
 {
     m_SignalDetectedMutex.lock();
+
     m_SignalDetectedMutex.unlock();
+
+    if (m_iSignalDetectedTimerInputChannel == -2)
+    {
+        m_iSignalDetectedTimerInputChannel = -1;
+        return -1;
+    }
 
     return m_iSignalDetectedNsecsElapsed;
 }
@@ -318,6 +338,12 @@ bool LTWindowsASIODriver::DetectNoiseFloor(int inputChannel)
     m_iNoiseFloorDetectChannel = inputChannel;
 
     m_NoiseFloorDetectedMutex.lock();
+
+    if(m_iNoiseFloorDetectChannel == -2)
+    {
+        m_iNoiseFloorDetectChannel = -1;
+        return false;
+    }
 
     return true;
 }
@@ -398,7 +424,11 @@ void LTWindowsASIODriver::ProcessSignal(long index)
             m_NoiseFloorDetectedMutex.unlock();
         }
     }
-    else if (m_SignalDetectedTimer.isValid())
+    else if (m_iNoiseFloorDetectChannel == -2)
+    {
+        m_NoiseFloorDetectedMutex.unlock();
+    }
+    else if (m_iSignalDetectedTimerInputChannel >= 0)
     {
         m_iSignalDetectedNsecsElapsed = m_SignalDetectedTimer.nsecsElapsed();
 
@@ -414,12 +444,19 @@ void LTWindowsASIODriver::ProcessSignal(long index)
         {   
             if (abs(m_pInputSamples[idx]) > threshold)
             {
+                m_iSignalDetectedTimerInputChannel = -1;
+
                 m_SignalDetectedTimer.invalidate();
                 m_SignalDetectedMutex.unlock();
 
                 break;
             }
         }
+    }
+    else if(m_iSignalDetectedTimerInputChannel == -2)
+    {
+        m_SignalDetectedTimer.invalidate();
+        m_SignalDetectedMutex.unlock();
     }
 }
 

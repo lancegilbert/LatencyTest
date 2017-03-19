@@ -61,11 +61,14 @@ LTMainWindow::LTMainWindow(LTApplication* pApp, QDateTime startupTime)
     connect(asioDeviceListComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onAsioCurrentIndexChanged(int)));
     connect(measureLatencyButton, SIGNAL(clicked()), this, SLOT(onLatencyTestMeasurePushed()));
     connect(addButton, SIGNAL(clicked()), this, SLOT(onAddLatencyTestPushed()));
+    connect(cancelButton, SIGNAL(clicked()), this, SLOT(onLatencyTestCancelPushed()));
 
     initializeMidiInPanel();
     initializeMidiOutPanel();
     initializeAsioPanel();
     initializeLatencyTestPanel();
+
+    cancelButton->setText("Panic");
 }
 
 LTMainWindow::~LTMainWindow(void)
@@ -135,6 +138,26 @@ void LTMainWindow::onAsioCurrentIndexChanged(int index)
 
 }
 
+
+void LTMainWindow::onLatencyTestCancelPushed(void)
+{
+    if (QString::compare("Cancel", cancelButton->text()) == 0)
+    {
+        LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
+        LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
+
+        driver->CancelSignalDetection();
+
+        LTWindowsASIO::UnlockLTWindowsAsio();
+
+        m_pWindowsMIDI->SendMIDIPanic(-1);
+    }
+    else if (QString::compare("Panic", cancelButton->text()) == 0)
+    {
+        m_pWindowsMIDI->SendMIDIPanic(-1);
+    }
+}
+
 // Taken from http://stackoverflow.com/a/19695285
 template <typename It>
 typename std::iterator_traits<It>::value_type Median(It begin, It end)
@@ -146,6 +169,8 @@ typename std::iterator_traits<It>::value_type Median(It begin, It end)
 
 void LTMainWindow::onLatencyTestMeasurePushed(void)
 {
+    cancelButton->setText("Cancel");
+
     LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
     LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
     LTWindowsASIO::UnlockLTWindowsAsio();
@@ -160,6 +185,7 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
 
             if (!device->OpenDevice())
             {
+                cancelButton->setText("Panic");
                 return;
             }
 
@@ -167,8 +193,9 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
 
             if (!driver->DetectNoiseFloor(audioInputChannel))
             {
-                curRow->midiLatencyLabel->setText(QString("Can't Detect"));
-                curRow->totalLatencyLabel->setText(QString("Noise Floor"));
+                device->CloseDevice();
+                cancelButton->setText("Panic");
+                return;
             }
             else
             {
@@ -185,13 +212,24 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
 
                     if (!device->SendMIDINote(LTMIDI_Command_NoteOn, midiChannel, LTMIDI_Note_C, 3, 0x40))
                     {
+                        cancelButton->setText("Panic");
+                        device->CloseDevice();
                         return;
                     }
 
                     int64_t nsecsElapsed = driver->WaitForSignalDetected();
 
+                    if (nsecsElapsed == -1)
+                    {
+                        cancelButton->setText("Panic");
+                        device->CloseDevice();
+                        return;
+                    }
+
                     if (!device->SendMIDINote(LTMIDI_Command_NoteOffRunning, midiChannel, LTMIDI_Note_C, 3, 0x00))
                     {
+                        cancelButton->setText("Panic");
+                        device->CloseDevice();
                         return;
                     }
 
@@ -218,6 +256,8 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
             }
         }
     }
+
+    cancelButton->setText("Panic");
 }
 
 void LTMainWindow::onAddLatencyTestPushed(void)

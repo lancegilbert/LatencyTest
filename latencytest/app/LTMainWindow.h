@@ -67,6 +67,7 @@ public slots:
     void onRefreshMIDIOutPushed(void);
     void onAsioCurrentIndexChanged(int index);
     void onLatencyTestMeasurePushed(void);
+    void onLatencyTestCancelPushed(void);
 
     void onAddLatencyTestPushed(void);
     void onRemoveLatencyTestPushed(int rowIdx);

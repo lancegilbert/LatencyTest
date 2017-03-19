@@ -38,6 +38,54 @@ LTMIDIOutDevice* LTMIDI::GetOutDevice(int deviceID)
     return m_OutDevs.at(deviceID);
 }
 
+void LTMIDI::SendMIDIPanic(int deviceID)
+{
+    if (deviceID < 0)
+    {
+        int numOutDevs = GetNumInitializedOutDevices();
+
+        for (int idx = 0; idx < numOutDevs; idx++)
+        {
+            // Recursively call this function with valid device indexes 
+            SendMIDIPanic(idx);
+        }
+    }
+    else
+    {
+        LTMIDIOutDevice* device = GetOutDevice(deviceID);
+
+        if (device != nullptr)
+        {
+            device->OpenDevice();
+
+            //for(int channelIdx = 0; channelIdx < 16; channelIdx++)
+            int channelIdx = 0;
+            {
+                //for(int octaveIdx = -1; octaveIdx < 4; octaveIdx++)
+                int octaveIdx = 3;
+                {
+                    device->SendMIDINote(LTMIDI_Command_NoteOff, channelIdx, LTMIDI_Note_C, octaveIdx, 0x00);
+#if 0
+                    device->SendMIDINote(LTMIDI_Command_NoteOff, channelIdx, LTMIDI_Note_CSharp, octaveIdx, 0x00);
+                    device->SendMIDINote(LTMIDI_Command_NoteOff, channelIdx, LTMIDI_Note_D, octaveIdx, 0x00);
+                    device->SendMIDINote(LTMIDI_Command_NoteOff, channelIdx, LTMIDI_Note_EFlat, octaveIdx, 0x00);
+                    device->SendMIDINote(LTMIDI_Command_NoteOff, channelIdx, LTMIDI_Note_E, octaveIdx, 0x00);
+                    device->SendMIDINote(LTMIDI_Command_NoteOff, channelIdx, LTMIDI_Note_F, octaveIdx, 0x00);
+                    device->SendMIDINote(LTMIDI_Command_NoteOff, channelIdx, LTMIDI_Note_FSharp, octaveIdx, 0x00);
+                    device->SendMIDINote(LTMIDI_Command_NoteOff, channelIdx, LTMIDI_Note_G, octaveIdx, 0x00);
+                    device->SendMIDINote(LTMIDI_Command_NoteOff, channelIdx, LTMIDI_Note_GSharp, octaveIdx, 0x00);
+                    device->SendMIDINote(LTMIDI_Command_NoteOff, channelIdx, LTMIDI_Note_A, octaveIdx, 0x00);
+                    device->SendMIDINote(LTMIDI_Command_NoteOff, channelIdx, LTMIDI_Note_BFlat, octaveIdx, 0x00);
+                    device->SendMIDINote(LTMIDI_Command_NoteOff, channelIdx, LTMIDI_Note_B, octaveIdx, 0x00);
+#endif
+                }
+            }
+
+            device->CloseDevice();
+        }
+    }
+}
+
 LTMIDIDevice::LTMIDIDevice()
     : m_iDeviceID(-1)
     , m_iMID(-1)
