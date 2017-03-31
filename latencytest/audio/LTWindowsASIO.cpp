@@ -436,7 +436,7 @@ void LTWindowsASIODriver::ProcessSignal(long index)
 
         double threshold = m_NoiseFloors.at(m_iSignalDetectedTimerInputChannel);
 
-        static double margin = 0.25;
+        static double margin = 0.10;
 
         threshold = threshold + (threshold * margin);
 

@@ -34,15 +34,15 @@ HEADERS += 	./app/LTApplication.h \
 
 win32*:contains(QMAKE_HOST.arch, x86_64): {
 
-	LIBS += Winmm.lib
+	LIBS += Winmm.lib dsound.lib
 
     CONFIG(debug, debug|release) {
-		DESTDIR = ./bin/x64/debug
+        DESTDIR = "$$_PRO_FILE_PWD_/../Deploy/Stage/Win64/Debug"
 		LIBS += ../external/rtaudio/lib/x64/rtaudiod.lib
 		LIBS += ../external/asiosdk/lib/x64/asiosdkd.lib
     } 
     else {
-    	DESTDIR = ./bin/x64/release
+        DESTDIR = "$$_PRO_FILE_PWD_/../Deploy/Stage/Win64/Release"
     	LIBS += ../external/rtaudio/lib/x64/rtaudio.lib
     	LIBS += ../external/asiosdk/lib/x64/asiosdk.lib
     }
