@@ -9,11 +9,9 @@
 #include <QList>
 #include <QSignalMapper>
 
-#include "Windows.h"
-
 #include "ui_LTMainWindowUI.h"
 
-#define MAXFPSSAMPLES 120 // 2 seconds(ish)
+#include "audio/LTAudioThreads.h"
 
 namespace Ui {
 class LTMainWindow;
@@ -34,7 +32,6 @@ public:
     void setLoadPath(QString path) { m_sStartingLoadPath = path; }
 
     void updateStatusBar(void);
-    float getTimeInSeconds();
  
 	void saveSettings(QSettings *settings);
 	void loadSettings(QSettings *settings, bool reset);
@@ -43,8 +40,6 @@ public:
     bool getLoadComplete(void) { return m_bInitialPrefsLoadComplete; }
 
 private:
-    void initTimecounter(void);
-
     void UpdateLatencyTestAsio(void);
 
     void initializeMidiInPanel(void);
@@ -59,6 +54,7 @@ public slots:
     void onRefreshMIDIOutPushed(void);
     void onAsioCurrentIndexChanged(int index);
     void onLatencyTestMeasurePushed(void);
+	void onSignalDetectThreadCompleted(LTSignalDetectThreadResult result);
     void onLatencyTestCancelPushed(void);
     void onSaveSettingsPushed(void);
 
@@ -88,14 +84,15 @@ private:
 
     bool m_bInitialPrefsLoadComplete;
 
-    LARGE_INTEGER m_iTimeAtStart;
-    LARGE_INTEGER m_iTicksPerSecond;
-
     class LTWindowsMIDI *m_pWindowsMIDI;
  
     QList<LTRowWidget*> m_LTRowWidgets;
 
     QSignalMapper m_removeLatencyTestButtonSignalMapper;
+
+	QList<LTSignalDetectThread*> m_SignalDetectThreads;
+
+	int m_iSignalDetectThreadsRemaining;
 
 protected:
 	virtual bool event (QEvent* lEvent); 

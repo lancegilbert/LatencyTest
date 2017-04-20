@@ -7,8 +7,6 @@
 #include <QThread>
 #include <QElapsedTimer>
 
-#include <Windows.h>
-
 #include "host/asiodrivers.h"
 #include "common/asio.h"
 

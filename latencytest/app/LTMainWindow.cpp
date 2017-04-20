@@ -39,6 +39,7 @@ LTMainWindow::LTMainWindow(LTApplication* pApp, QDateTime startupTime)
     , m_sLoadedFilePath("UNKNOWN")
     , m_bInitialPrefsLoadComplete(false)
     , m_pWindowsMIDI(nullptr)
+	, m_iSignalDetectThreadsRemaining(0)
  {
     setupUi(this);
  
@@ -47,8 +48,6 @@ LTMainWindow::LTMainWindow(LTApplication* pApp, QDateTime startupTime)
     m_pApplication->processEvents();
 
     setTabPosition(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea, QTabWidget::North);
-
-    initTimecounter();
 
     m_pPermStatusLabel = new QLabel(QString("   "), this);
     m_pPermStatusLabel->setFrameStyle(QFrame::Plain | QFrame::NoFrame);
@@ -166,22 +165,29 @@ void LTMainWindow::onSaveSettingsPushed(void)
     saveSettings(m_pApplication->getSettings());
 }
 
-// Taken from http://stackoverflow.com/a/19695285
-template <typename It>
-typename std::iterator_traits<It>::value_type Median(It begin, It end)
-{
-    auto size = std::distance(begin, end);
-        std::nth_element(begin, begin + size / 2, end);
-    return *std::next(begin, size / 2);
-}
-
 void LTMainWindow::onLatencyTestMeasurePushed(void)
 {
     cancelButton->setText("Cancel");
 
+	while (m_SignalDetectThreads.count() > 0)
+	{
+		LTSignalDetectThread* thread = m_SignalDetectThreads.takeFirst();
+		if (thread != nullptr)
+		{
+			while (!thread->isFinished())
+			{
+				QThread::msleep(10);
+			}
+
+			thread->deleteLater();
+		}
+	}
+
     LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
     LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
     LTWindowsASIO::UnlockLTWindowsAsio();
+
+	latencyTestGridLayout->setEnabled(false);
 
     for (int idx = 0; idx < m_LTRowWidgets.count(); idx++)
     {
@@ -189,83 +195,60 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
 
         if (curRow->enableCheckBox->isChecked())
         {
-            LTMIDIOutDevice* device = m_pWindowsMIDI->GetOutDevice(curRow->midiOutComboBox->currentIndex());
+			LTSignalDetectThreadParameters params;
+			params.parent = this;
+			params.rowIdx = idx;
+			params.midiDevice = m_pWindowsMIDI;
+			params.audioDriver = driver;
+			params.midiOutDeviceId = curRow->midiOutComboBox->currentIndex();;
+			params.midiOutChannel = curRow->midiChannelSpinBox->value();
+			params.asioInputChannel = curRow->asioInputChannelComboBox->currentIndex();
+			params.testCount = testIterationsSpinBox->value();
+			params.testsPerSecond = testsPerSecondSpinBox->value();
 
-            if (!device->OpenDevice())
-            {
-                cancelButton->setText("Panic");
-                return;
-            }
+			LTSignalDetectThread* thread = new LTSignalDetectThread(params);
+			connect(thread, SIGNAL(Completed(LTSignalDetectThreadResult)), this, SLOT(onSignalDetectThreadCompleted(LTSignalDetectThreadResult)));
 
-            int audioInputChannel = curRow->asioInputChannelComboBox->currentIndex();
+			// Start them in parallel for the time being - make this user configurable later
+			thread->start();
 
-            if (!driver->DetectNoiseFloor(audioInputChannel))
-            {
-                device->CloseDevice();
-                cancelButton->setText("Panic");
-                return;
-            }
-            else
-            {
-                int testCount = testIterationsSpinBox->value();
-                float testsPerSecond = testsPerSecondSpinBox->value();
-
-                std::vector<double> elapsedValues;
-
-                for(int idx = 0; idx < testCount; idx++)
-                {
-                    driver->StartSignalDetectTimer(audioInputChannel);
-
-                    int midiChannel = curRow->midiChannelSpinBox->value();
-
-                    if (!device->SendMIDINote(LTMIDI_Command_NoteOn, midiChannel, LTMIDI_Note_C, 3, 0x40))
-                    {
-                        cancelButton->setText("Panic");
-                        device->CloseDevice();
-                        return;
-                    }
-
-                    int64_t nsecsElapsed = driver->WaitForSignalDetected();
-
-                    if (nsecsElapsed == -1)
-                    {
-                        cancelButton->setText("Panic");
-                        device->CloseDevice();
-                        return;
-                    }
-
-                    if (!device->SendMIDINote(LTMIDI_Command_NoteOffRunning, midiChannel, LTMIDI_Note_C, 3, 0x00))
-                    {
-                        cancelButton->setText("Panic");
-                        device->CloseDevice();
-                        return;
-                    }
-
-                    double msecsElapsed = (double)nsecsElapsed / 1000000.0;
-
-                    float delay = ((1.0f / testsPerSecond) * 1000.0f) - msecsElapsed;
-
-                    QTime dieTime = QTime::currentTime().addMSecs(delay);
-                    while (QTime::currentTime() < dieTime)
-                    {
-                        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
-                    }
-
-                    elapsedValues.push_back(msecsElapsed);
-                }
-
-                device->CloseDevice();
-
-                double averageMsecsElapsed = Median(elapsedValues.begin(), elapsedValues.end());
-
-                double inputLatency = (driver->GetInputLatency() / driver->GetSampleRate()) * 1000.0f;
-                curRow->midiLatencyLabel->setText(QString("%1ms").arg(averageMsecsElapsed - inputLatency));
-                curRow->totalLatencyLabel->setText(QString("%1ms").arg(averageMsecsElapsed));
-            }
-        }
+			m_SignalDetectThreads.append(thread);
+		}
     }
 
-    cancelButton->setText("Panic");
+	if (m_SignalDetectThreads.count() <= 0)
+	{
+		latencyTestGridLayout->setEnabled(true);
+	}
+}
+
+void LTMainWindow::onSignalDetectThreadCompleted(LTSignalDetectThreadResult result)
+{
+	if (result.signalDetected && m_LTRowWidgets.count() < result.rowIdx)
+	{
+		LTRowWidget* curRow = m_LTRowWidgets.at(result.rowIdx);
+
+		curRow->midiLatencyLabel->setText(QString("%1ms").arg(result.midiLatency));
+		curRow->totalLatencyLabel->setText(QString("%1ms").arg(result.totalLatency));
+	}
+
+	m_iSignalDetectThreadsRemaining--;
+
+	if (m_iSignalDetectThreadsRemaining <= 0)
+	{
+		while (m_SignalDetectThreads.count() > 0)
+		{
+			LTSignalDetectThread* thread = m_SignalDetectThreads.takeFirst();
+			if (thread != nullptr)
+			{
+				thread->deleteLater();
+			}
+		}
+
+		latencyTestGridLayout->setEnabled(true);
+
+		cancelButton->setText("Panic");
+	}
 }
 
 void LTMainWindow::onAddLatencyTestPushed(void)
@@ -623,29 +606,6 @@ void LTMainWindow::saveSettings(QSettings *settings)
     settings->endGroup();
 }
 
-void LTMainWindow::initTimecounter(void)
-{
-    QueryPerformanceFrequency(&m_iTicksPerSecond);
-    QueryPerformanceCounter(&m_iTimeAtStart);
-}
-
-float LTMainWindow::getTimeInSeconds(void)
-{
-    LARGE_INTEGER curTime;
-    // This is the number of clock ticks since start
-    QueryPerformanceCounter(&curTime);
-    
-    // Divide by frequency to get the time in seconds
-    LARGE_INTEGER deltaTime;
-    deltaTime.QuadPart = curTime.QuadPart - m_iTimeAtStart.QuadPart;
-    // Convert to mircoseconds
-    deltaTime.QuadPart *= 1000000;
-    deltaTime.QuadPart /= m_iTicksPerSecond.QuadPart;
-
-    double deltaTimeInSeconds = (double)deltaTime.QuadPart / 1000000;
-
-    return deltaTimeInSeconds;
-}
 
 void LTMainWindow::updateStatusBar(void)
 {

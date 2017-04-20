@@ -557,518 +557,439 @@ void LTWindowsASIODriver::ConvertSampleToNative(ASIOSampleType inputType, void* 
 {
     switch (outputType)
     {
-    case ASIOSTFloat64MSB:
-    case ASIOSTFloat64LSB:
-    {
-        double scale;
-        double *out = (double *)outputBuffer;
+		case ASIOSTFloat64MSB:
+		case ASIOSTFloat64LSB:
+		{
+			double scale;
+			double *out = (double *)outputBuffer;
 
-        switch (inputType)
-        {
-        case ASIOSTInt16MSB:
-        case ASIOSTInt16LSB:
-        {
-            int16_t *in = (int16_t *)inputBuffer;
-            scale = 1.0 / 32767.5;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = *((double*)in);
-                *out += 0.5;
-                *out *= scale;
+			switch (inputType)
+			{
+				case ASIOSTInt16MSB:
+				case ASIOSTInt16LSB:
+				{
+					int16_t *in = (int16_t *)inputBuffer;
+					scale = 1.0 / 32767.5;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = *((double*)in);
+						*out += 0.5;
+						*out *= scale;
 
-                in++;
-                out++;
-            }
-            break;
-        }
-        case ASIOSTInt24MSB:
-        case ASIOSTInt24LSB:
-        {
-            LTS24 *in = (LTS24 *)inputBuffer;
-            scale = 1.0 / 8388607.5;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = (double)in->asInt();
-                *out += 0.5;
-                *out *= scale;
+						in++;
+						out++;
+					}
+					break;
+				}
+				case ASIOSTInt24MSB:
+				case ASIOSTInt24LSB:
+				{
+					LTS24 *in = (LTS24 *)inputBuffer;
+					scale = 1.0 / 8388607.5;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = (double)in->asInt();
+						*out += 0.5;
+						*out *= scale;
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTInt32MSB:
-        case ASIOSTInt32LSB:
-        {
-            int32_t *in = (int32_t *)inputBuffer;
-            scale = 1.0 / 2147483647.5;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = *in;
-                *out += 0.5;
-                *out *= scale;
+					break;
+				}
+				case ASIOSTInt32MSB:
+				case ASIOSTInt32LSB:
+				{
+					int32_t *in = (int32_t *)inputBuffer;
+					scale = 1.0 / 2147483647.5;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = *in;
+						*out += 0.5;
+						*out *= scale;
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTFloat32MSB:
-        case ASIOSTFloat32LSB:
-        {
-            float *in = (float *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = *in;
+					break;
+				}
+				case ASIOSTFloat32MSB:
+				case ASIOSTFloat32LSB:
+				{
+					float *in = (float *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = *in;
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTFloat64MSB:
-        case ASIOSTFloat64LSB:
-        {
-            // Channel compensation and/or (de)interleaving only.
-            double *in = (double *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++) {
-                *out = *in;
+					break;
+				}
+				case ASIOSTFloat64MSB:
+				case ASIOSTFloat64LSB:
+				{
+					// Channel compensation and/or (de)interleaving only.
+					double *in = (double *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++) {
+						*out = *in;
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        }
+					break;
+				}
+			}
 
-        break;
-    }
-    case ASIOSTFloat32MSB:
-    case ASIOSTFloat32LSB:
-    {
-        float scale;
-        float *out = (float *)outputBuffer;
+			break;
+		}
+		case ASIOSTFloat32MSB:
+		case ASIOSTFloat32LSB:
+		{
+			float scale;
+			float *out = (float *)outputBuffer;
 
-        switch (inputType)
-        {
-        case ASIOSTInt16MSB:
-        case ASIOSTInt16LSB:
-        {
-            int16_t *in = (int16_t *)inputBuffer;
-            scale = (float)(1.0 / 32767.5);
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = *in;
-                *out += 0.5;
-                *out *= scale;
+			switch (inputType)
+			{
+				case ASIOSTInt16MSB:
+				case ASIOSTInt16LSB:
+				{
+					int16_t *in = (int16_t *)inputBuffer;
+					scale = (float)(1.0 / 32767.5);
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = *in;
+						*out += 0.5;
+						*out *= scale;
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTInt24MSB:
-        case ASIOSTInt24LSB:
-        {
-            LTS24 *in = (LTS24 *)inputBuffer;
-            scale = (float)(1.0 / 8388607.5);
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = in->asInt();
-                *out += 0.5;
-                *out *= scale;
+					break;
+				}
+				case ASIOSTInt24MSB:
+				case ASIOSTInt24LSB:
+				{
+					LTS24 *in = (LTS24 *)inputBuffer;
+					scale = (float)(1.0 / 8388607.5);
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = in->asInt();
+						*out += 0.5;
+						*out *= scale;
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTInt32MSB:
-        case ASIOSTInt32LSB:
-        {
-            int32_t *in = (int32_t *)inputBuffer;
-            scale = (float)(1.0 / 2147483647.5);
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = *in;
-                *out += 0.5;
-                *out *= scale;
+					break;
+				}
+				case ASIOSTInt32MSB:
+				case ASIOSTInt32LSB:
+				{
+					int32_t *in = (int32_t *)inputBuffer;
+					scale = (float)(1.0 / 2147483647.5);
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = *in;
+						*out += 0.5;
+						*out *= scale;
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTFloat32MSB:
-        case ASIOSTFloat32LSB:
-        {
-            // Channel compensation and/or (de)interleaving only.
-            float *in = (float *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = *in;
+					break;
+				}
+				case ASIOSTFloat32MSB:
+				case ASIOSTFloat32LSB:
+				{
+					// Channel compensation and/or (de)interleaving only.
+					float *in = (float *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = *in;
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTFloat64MSB:
-        case ASIOSTFloat64LSB:
-        {
-            double *in = (double *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = *in;
+					break;
+				}
+				case ASIOSTFloat64MSB:
+				case ASIOSTFloat64LSB:
+				{
+					double *in = (double *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = *in;
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        }
+					break;
+				}
+			}
 
-        break;
-    }
-    case ASIOSTInt32MSB:
-    case ASIOSTInt32LSB:
-    {
-        int32_t *out = (int32_t *)outputBuffer;
+			break;
+		}
+		case ASIOSTInt32MSB:
+		case ASIOSTInt32LSB:
+		{
+			int32_t *out = (int32_t *)outputBuffer;
 
-        switch (inputType)
-        {
-        case ASIOSTInt16MSB:
-        case ASIOSTInt16LSB:
-        {
-            int16_t *in = (int16_t *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = *in;
-                *out <<= 16;
+			switch (inputType)
+			{
+				case ASIOSTInt16MSB:
+				case ASIOSTInt16LSB:
+				{
+					int16_t *in = (int16_t *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = *in;
+						*out <<= 16;
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTInt24MSB:
-        case ASIOSTInt24LSB:
-        {
-            LTS24 *in = (LTS24 *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = in->asInt();
-                *out <<= 8;
+					break;
+				}
+				case ASIOSTInt24MSB:
+				case ASIOSTInt24LSB:
+				{
+					LTS24 *in = (LTS24 *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = in->asInt();
+						*out <<= 8;
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTInt32MSB:
-        case ASIOSTInt32LSB:
-        {
-            // Channel compensation and/or (de)interleaving only.
-            int32_t *in = (int32_t *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = *in;
+					break;
+				}
+				case ASIOSTInt32MSB:
+				case ASIOSTInt32LSB:
+				{
+					// Channel compensation and/or (de)interleaving only.
+					int32_t *in = (int32_t *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = *in;
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTFloat32MSB:
-        case ASIOSTFloat32LSB:
-        {
-            float *in = (float *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = (int32_t)(*in * 2147483647.5 - 0.5);
+					break;
+				}
+				case ASIOSTFloat32MSB:
+				case ASIOSTFloat32LSB:
+				{
+					float *in = (float *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = (int32_t)(*in * 2147483647.5 - 0.5);
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTFloat64MSB:
-        case ASIOSTFloat64LSB:
-        {
-            double *in = (double *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = (int32_t)(*in * 2147483647.5 - 0.5);
+					break;
+				}
+				case ASIOSTFloat64MSB:
+				case ASIOSTFloat64LSB:
+				{
+					double *in = (double *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = (int32_t)(*in * 2147483647.5 - 0.5);
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        }
+					break;
+				}
+			}
 
-        break;
-    }
-    case ASIOSTInt24MSB:
-    case ASIOSTInt24LSB:
-    {
-        LTS24 *out = (LTS24 *)outputBuffer;
+			break;
+		}
+		case ASIOSTInt24MSB:
+		case ASIOSTInt24LSB:
+		{
+			LTS24 *out = (LTS24 *)outputBuffer;
 
-        switch (inputType)
-        {
-        case ASIOSTInt16MSB:
-        case ASIOSTInt16LSB:
-        {
-            int16_t *in = (int16_t *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = (int32_t)(*in << 8);
-                //*out <<= 8;
+			switch (inputType)
+			{
+				case ASIOSTInt16MSB:
+				case ASIOSTInt16LSB:
+				{
+					int16_t *in = (int16_t *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = (int32_t)(*in << 8);
+						//*out <<= 8;
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTInt24MSB:
-        case ASIOSTInt24LSB:
-        {
-            // Channel compensation and/or (de)interleaving only.
-            LTS24 *in = (LTS24 *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = *in;
+					break;
+				}
+				case ASIOSTInt24MSB:
+				case ASIOSTInt24LSB:
+				{
+					// Channel compensation and/or (de)interleaving only.
+					LTS24 *in = (LTS24 *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = *in;
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTInt32MSB:
-        case ASIOSTInt32LSB:
-        {
-            int32_t *in = (int32_t *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = (int32_t)(*in >> 8);
-                //*out >>= 8;
+					break;
+				}
+				case ASIOSTInt32MSB:
+				case ASIOSTInt32LSB:
+				{
+					int32_t *in = (int32_t *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = (int32_t)(*in >> 8);
+						//*out >>= 8;
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTFloat32MSB:
-        case ASIOSTFloat32LSB:
-        {
-            float *in = (float *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = (int32_t)(*in * 8388607.5 - 0.5);
+					break;
+				}
+				case ASIOSTFloat32MSB:
+				case ASIOSTFloat32LSB:
+				{
+					float *in = (float *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = (int32_t)(*in * 8388607.5 - 0.5);
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTFloat64MSB:
-        case ASIOSTFloat64LSB:
-        {
+					break;
+				}
+				case ASIOSTFloat64MSB:
+				case ASIOSTFloat64LSB:
+				{
 
-            double *in = (double *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = (int32_t)(*in * 8388607.5 - 0.5);
+					double *in = (double *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = (int32_t)(*in * 8388607.5 - 0.5);
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        }
+					break;
+				}
+			}
 
-        break;
-    }
-    case ASIOSTInt16MSB:
-    case ASIOSTInt16LSB:
-    {
-        int16_t *out = (int16_t *)outputBuffer;
+			break;
+		}
+		case ASIOSTInt16MSB:
+		case ASIOSTInt16LSB:
+		{
+			int16_t *out = (int16_t *)outputBuffer;
 
-        switch (inputType)
-        {
-        case ASIOSTInt16MSB:
-        case ASIOSTInt16LSB:
-        {
-            // Channel compensation and/or (de)interleaving only.
-            int16_t *in = (int16_t *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = *in;
+			switch (inputType)
+			{
+				case ASIOSTInt16MSB:
+				case ASIOSTInt16LSB:
+				{
+					// Channel compensation and/or (de)interleaving only.
+					int16_t *in = (int16_t *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = *in;
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTInt24MSB:
-        case ASIOSTInt24LSB:
-        {
-            LTS24 *in = (LTS24 *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = (int16_t)(in->asInt() >> 8);
+					break;
+				}
+				case ASIOSTInt24MSB:
+				case ASIOSTInt24LSB:
+				{
+					LTS24 *in = (LTS24 *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = (int16_t)(in->asInt() >> 8);
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTInt32MSB:
-        case ASIOSTInt32LSB:
-        {
-            int32_t *in = (int32_t *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = (int16_t)((*in >> 16) & 0x0000ffff);
+					break;
+				}
+				case ASIOSTInt32MSB:
+				case ASIOSTInt32LSB:
+				{
+					int32_t *in = (int32_t *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = (int16_t)((*in >> 16) & 0x0000ffff);
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTFloat32MSB:
-        case ASIOSTFloat32LSB:
-        {
-            float *in = (float *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++)
-            {
-                *out = (int16_t)(*in * 32767.5 - 0.5);
+					break;
+				}
+				case ASIOSTFloat32MSB:
+				case ASIOSTFloat32LSB:
+				{
+					float *in = (float *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++)
+					{
+						*out = (int16_t)(*in * 32767.5 - 0.5);
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        case ASIOSTFloat64MSB:
-        case ASIOSTFloat64LSB:
-        {
-            double *in = (double *)inputBuffer;
-            for (int i = 0; i<GetPreferredSize(); i++) {
-                *out = (int16_t)(*in * 32767.5 - 0.5);
+					break;
+				}
+				case ASIOSTFloat64MSB:
+				case ASIOSTFloat64LSB:
+				{
+					double *in = (double *)inputBuffer;
+					for (int i = 0; i<GetPreferredSize(); i++) {
+						*out = (int16_t)(*in * 32767.5 - 0.5);
 
-                in++;
-                out++;
-            }
+						in++;
+						out++;
+					}
 
-            break;
-        }
-        }
+					break;
+				}
+			}
 
-        break;
-    }
+			break;
+		}
     }
 
     return;
 }
-
-#if 0
-void LTWindowsASIODriver::byteSwapBuffer(char *buffer, unsigned int samples, RtAudioFormat format)
-{
-    char val;
-    char *ptr;
-
-    ptr = buffer;
-    if (format == RTAUDIO_Sint16_t) {
-        for (unsigned int i = 0; i<samples; i++) {
-            // Swap 1st and 2nd bytes.
-            val = *(ptr);
-            *(ptr) = *(ptr + 1);
-            *(ptr + 1) = val;
-
-            // Increment 2 bytes.
-            ptr += 2;
-        }
-    }
-    else if (format == RTAUDIO_Sint32_t ||
-        format == RTAUDIO_float) {
-        for (unsigned int i = 0; i<samples; i++) {
-            // Swap 1st and 4th bytes.
-            val = *(ptr);
-            *(ptr) = *(ptr + 3);
-            *(ptr + 3) = val;
-
-            // Swap 2nd and 3rd bytes.
-            ptr += 1;
-            val = *(ptr);
-            *(ptr) = *(ptr + 1);
-            *(ptr + 1) = val;
-
-            // Increment 3 more bytes.
-            ptr += 3;
-        }
-    }
-    else if (format == RTAUDIO_SLTS24) {
-        for (unsigned int i = 0; i<samples; i++) {
-            // Swap 1st and 3rd bytes.
-            val = *(ptr);
-            *(ptr) = *(ptr + 2);
-            *(ptr + 2) = val;
-
-            // Increment 2 more bytes.
-            ptr += 2;
-        }
-    }
-    else if (format == RTAUDIO_double) {
-        for (unsigned int i = 0; i<samples; i++) {
-            // Swap 1st and 8th bytes
-            val = *(ptr);
-            *(ptr) = *(ptr + 7);
-            *(ptr + 7) = val;
-
-            // Swap 2nd and 7th bytes
-            ptr += 1;
-            val = *(ptr);
-            *(ptr) = *(ptr + 5);
-            *(ptr + 5) = val;
-
-            // Swap 3rd and 6th bytes
-            ptr += 1;
-            val = *(ptr);
-            *(ptr) = *(ptr + 3);
-            *(ptr + 3) = val;
-
-            // Swap 4th and 5th bytes
-            ptr += 1;
-            val = *(ptr);
-            *(ptr) = *(ptr + 1);
-            *(ptr + 1) = val;
-
-            // Increment 5 more bytes.
-            ptr += 5;
-        }
-    }
-}
-#endif

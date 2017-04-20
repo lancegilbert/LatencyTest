@@ -21,7 +21,8 @@ SOURCES += 	./app/LTApplication.cpp \
 			./midi/LTMIDIDevice.cpp \
 			./audio/LTAudioDriver.cpp \
 			./audio/LTWindowsASIO.cpp \
-			./audio/LTRTAudio.cpp
+			./audio/LTRTAudio.cpp \
+			./audio/LTAudioThreads.cpp
 
 HEADERS += 	./app/LTApplication.h \
 			./app/LTMainWindow.h \
@@ -30,7 +31,8 @@ HEADERS += 	./app/LTApplication.h \
 			./midi/LTMIDIDevice.h \
 			./audio/LTAudioDriver.h \
 			./audio/LTWindowsASIO.h \
-			./audio/LTRTAudio.h
+			./audio/LTRTAudio.h \
+			./audio/LTAudioThreads.h 
 
 win32*:contains(QMAKE_HOST.arch, x86_64): {
 

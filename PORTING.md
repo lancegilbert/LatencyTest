@@ -10,22 +10,22 @@ Additionally, the rtaudio library has been introduced as a dependency in prepera
 Please take note that several pieces of work are preferred prior to serious porting efforts:
 
 ```
-* The abstractions for platform specific MIDI APIs need to be reviewed and refactored with consideration for CoreMIDI, JACK MIDI, etc.
-  - It might be worthwhile to consider dropping the LatencyTest abstractions entirely and using something like [RtMidi](https://github.com/thestk/rtmidi)
-* The abstractions for platform specific audio APIs need to be reviewed and refactored with consideration for CoreAudio, JACK, etc.
-  - It might be worthwhile to consider dropping the LatencyTest abstractions entirely and using something like [RtAudio](https://github.com/thestk/rtaudio)
-* Usage of platform-specific abstractions in non platform specific code (eg: LTMainWindow) needs to be either put in #ifdef blocks (hack) or handled via abstraction (preferable)
+* The MIDI API abstraction needs to be reviewed/refactored with consideration for CoreMIDI, JACK MIDI, etc.
+  - Consider dropping our abstractions entirely in favor of [RtMidi](https://github.com/thestk/rtmidi)
+* The audio API abstraction needs to be reviewed/refactored with consideration for CoreAudio, JACK, etc.
+  - Consider dropping our abstractions entirely in favor of [RtAudio](https://github.com/thestk/rtaudio)
+* Clean up usage of platform-specific classes in common code like LTMainWindow.
 ```
 
-It is important to note however that any third-party library usage to facilitate timing sensitive work (eg: MIDI or Audio) should be scruitinized for their latency compared to direct usage of the platform API when/if possible.
+It is important to note however that any third-party libraries used to for timing sensitive work (eg: MIDI or Audio) should have their latency analyzed and compared to direct "optimal" usage of the low-level platform API when/if possible.
 
-Care was taken to have minimal layers of indirection in an effort to get a maximally accurate (best-case) latency figure.
+Native implementations were done in favor of abstractions such as RtMidi/RtAudio in an effort to get a maximally accurate (best-case) latency figure.
 
-This is the reason that they are not currently used, and an original abstraction was attempted. 
+Care was taken to avoid buffering or indirection to whatever degree feasible.
 
-However, to my knowledge neither RtMidi or RtAudio have been formally tested for latency compared to direct platform API usage.
+With that said, I have not yet tested either RtMidi or RtAudio for latency compared to direct platform API usage.
 
-It is entirely possible they introduce no relevant latency (API overhead as opposed to additional buffering, etc) in which case they are highly preferable as it would significantly reduce the volume of code and increase compatibility.
+It is entirely possible they introduce no relevant latency in which case they are highly preferable as it would significantly reduce the volume of code while also making porting much simpler.
 
 The plan is to add RtMidi and RtAudio support using LatencyTest's own platform abstractions (eg: RtAudio as a platform in parallel to ASIO) and use LatencyTest to compare them directly.
 
@@ -37,5 +37,5 @@ Lance Gilbert
 [lancegilbertphx](https://www.instagram.com/lancegilbertphx/)  on Instagram
 [lancegilbert](https://github.com/lancegilbert) on GitHub
 
-(Updated on March 31st 2017)
+(Updated on April 4th 2017)
 
