@@ -10,6 +10,7 @@ LTRowWidget::~LTRowWidget(void)
 {
     delete removeButton;
     delete enableCheckBox;
+	delete progressBar;
     delete midiOutComboBox;
     delete midiChannelSpinBox;
     delete asioDriverLabel;

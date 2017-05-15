@@ -14,7 +14,12 @@ LTSignalDetectThread::LTSignalDetectThread(LTSignalDetectThreadParameters params
 	, m_iTestCount(params.testCount)
 	, m_fTestsPerSecond(params.testsPerSecond)
 {
-
+	static bool metaTypesRegistered = false;
+	if(!metaTypesRegistered)
+	{
+		qRegisterMetaType<LTSignalDetectThreadResult>();
+		metaTypesRegistered = true;
+	}
 } 
 
 // Taken from http://stackoverflow.com/a/19695285
@@ -31,7 +36,8 @@ void LTSignalDetectThread::run()
 	LTSignalDetectThreadResult result;
 	result.rowIdx = m_iRowIdx;
 	result.signalDetected = false;
-
+	result.iterationsComplete = 0;
+	
 	LTMIDIOutDevice* device = m_pMidiDevice->GetOutDevice(m_iMidiOutDeviceId);
 
 	if (!device->OpenDevice())
@@ -49,6 +55,8 @@ void LTSignalDetectThread::run()
 	else
 	{
 		std::vector<double> elapsedValues;
+
+		double inputLatency = (m_pAudioDriver->GetInputLatency() / m_pAudioDriver->GetSampleRate()) * 1000.0f;
 
 		for (int idx = 0; idx < m_iTestCount; idx++)
 		{
@@ -81,7 +89,20 @@ void LTSignalDetectThread::run()
 
 			elapsedValues.push_back(msecsElapsed);
 
-			float delay = ((1.0f / m_fTestsPerSecond) * 1000.0f) - msecsElapsed;
+			// Make sure to clamp delay to a value above 0.0f to prevent msleep deadlock while debugging due to long msecsElapsed
+			float delay = max(((1.0f / m_fTestsPerSecond) * 1000.0f) - msecsElapsed, 0.0f);
+
+			double averageMsecsElapsed = Median(elapsedValues.begin(), elapsedValues.end());
+			double midiLatency = averageMsecsElapsed - inputLatency;
+
+			result.signalDetected = true;
+			result.midiLatency = midiLatency;
+			result.totalLatency = averageMsecsElapsed;
+			result.iterationsComplete++;
+
+			emit IterationCompleted(result);
+
+			result.signalDetected = false;
 
 			QThread::msleep((unsigned long)delay);
 		}
@@ -89,15 +110,11 @@ void LTSignalDetectThread::run()
 		device->CloseDevice();
 
 		double averageMsecsElapsed = Median(elapsedValues.begin(), elapsedValues.end());
-
-		double inputLatency = (m_pAudioDriver->GetInputLatency() / m_pAudioDriver->GetSampleRate()) * 1000.0f;
 		double midiLatency = averageMsecsElapsed - inputLatency;
 
 		result.signalDetected = true;
 		result.midiLatency = midiLatency;
 		result.totalLatency = averageMsecsElapsed;
-
-		emit Completed(result);
 	}
 
 	emit Completed(result);

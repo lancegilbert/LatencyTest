@@ -41,6 +41,7 @@ public:
 
 private:
     void UpdateLatencyTestAsio(void);
+	void SwapRowWidgetsLatencyTest(bool progressBar);
 
     void initializeMidiInPanel(void);
     void initializeMidiOutPanel(void);
@@ -54,6 +55,7 @@ public slots:
     void onRefreshMIDIOutPushed(void);
     void onAsioCurrentIndexChanged(int index);
     void onLatencyTestMeasurePushed(void);
+	void onSignalDetectThreadIterationCompleted(LTSignalDetectThreadResult result);
 	void onSignalDetectThreadCompleted(LTSignalDetectThreadResult result);
     void onLatencyTestCancelPushed(void);
     void onSaveSettingsPushed(void);

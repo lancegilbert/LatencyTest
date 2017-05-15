@@ -7,10 +7,12 @@
 struct LTSignalDetectThreadResult
 {
 	int rowIdx;
+	int iterationsComplete;
 	bool signalDetected;
 	double midiLatency;
 	double totalLatency;
 };
+Q_DECLARE_METATYPE(LTSignalDetectThreadResult);
 
 struct LTSignalDetectThreadParameters
 {
@@ -35,6 +37,7 @@ protected:
 	virtual void run();
 
 signals:
+	void IterationCompleted(LTSignalDetectThreadResult result);
 	void Completed(LTSignalDetectThreadResult result);
 
 private:

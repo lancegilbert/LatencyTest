@@ -28,6 +28,8 @@ public:
 
     virtual QMainWindow* getMainWindow(void);
 
+	bool loadStyleSheet(const char *name);
+
 protected:
     virtual bool eventFilter(QObject *obj, QEvent *ev);
 

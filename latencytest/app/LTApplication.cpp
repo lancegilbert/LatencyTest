@@ -36,13 +36,11 @@ LTApplication::~LTApplication(void)
 
 void LTApplication::start(void)
 {
-#if 0
-	if(!loadStyleSheet("./styles/dark.qss"))
+	if(!loadStyleSheet("./styles/latencytest.qss"))
 	{
 		m_bStartupFailed = true;
 		return;
 	}
-#endif
 
     setupMainWindow();
 
@@ -140,6 +138,30 @@ void LTApplication::saveSettings(QSettings *settings, bool isOnShutdown /* = fal
     }
 }
 
+bool LTApplication::loadStyleSheet(const char *name)
+{
+	QFile data(name);
+	QString style;
+	if (data.open(QFile::ReadOnly))
+	{
+		QTextStream styleIn(&data);
+		style = styleIn.readAll();
+		data.close();
+#ifdef __APPLE__
+		QString appPath = QApplication::applicationDirPath();
+		appPath.append("/../Resources/");
+		style.replace("%RUNPATH%", appPath);
+#else
+		style.replace("%RUNPATH%", ".");
+#endif
+
+		setStyleSheet(style);
+		return true;
+	}
+
+	return false;
+}
+
 int main(int argc, char *argv[])
 {
     qputenv("QT_HIDPI_AWARE", "1");
@@ -162,14 +184,18 @@ int main(int argc, char *argv[])
         pLTApp->start();
     }
 
+	int retVal = 0;
+
     if (pLTApp->startupFailed())
     {
         //LTError::fatalErrorDialog("Error Starting LatencyTest.");
+		retVal = 1;
     }
-
-    int retVal = pLTApp->exec();
-
-    pLTApp->saveSettings(pLTApp->getSettings(), true);
+	else
+	{
+		retVal = pLTApp->exec();
+		pLTApp->saveSettings(pLTApp->getSettings(), true);
+	}
 
     delete pLTApp;
 

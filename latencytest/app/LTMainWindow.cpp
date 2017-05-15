@@ -143,21 +143,7 @@ void LTMainWindow::onAsioCurrentIndexChanged(int index)
 
 void LTMainWindow::onLatencyTestCancelPushed(void)
 {
-    if (QString::compare("Cancel", cancelButton->text()) == 0)
-    {
-        LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
-        LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
-
-        driver->CancelSignalDetection();
-
-        LTWindowsASIO::UnlockLTWindowsAsio();
-
-        m_pWindowsMIDI->SendMIDIPanic(-1);
-    }
-    else if (QString::compare("Panic", cancelButton->text()) == 0)
-    {
-        m_pWindowsMIDI->SendMIDIPanic(-1);
-    }
+    m_pWindowsMIDI->SendMIDIPanic(-1);
 }
 
 void LTMainWindow::onSaveSettingsPushed(void)
@@ -167,64 +153,136 @@ void LTMainWindow::onSaveSettingsPushed(void)
 
 void LTMainWindow::onLatencyTestMeasurePushed(void)
 {
-    cancelButton->setText("Cancel");
-
-	while (m_SignalDetectThreads.count() > 0)
+	if (QString::compare("Cancel Test", measureLatencyButton->text()) == 0)
 	{
-		LTSignalDetectThread* thread = m_SignalDetectThreads.takeFirst();
-		if (thread != nullptr)
-		{
-			while (!thread->isFinished())
-			{
-				QThread::msleep(10);
-			}
+		LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
+		LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
 
-			thread->deleteLater();
+		driver->CancelSignalDetection();
+
+		LTWindowsASIO::UnlockLTWindowsAsio();
+
+		m_pWindowsMIDI->SendMIDIPanic(-1);
+
+		progressBar->setEnabled(false);
+	}
+	else
+	{
+		cancelButton->setEnabled(false);
+		measureLatencyButton->setText("Cancel Test");
+
+		progressBar->setEnabled(true);
+		progressBar->setValue(0);
+
+		while (m_SignalDetectThreads.count() > 0)
+		{
+			LTSignalDetectThread* thread = m_SignalDetectThreads.takeFirst();
+			if (thread != nullptr)
+			{
+				while (!thread->isFinished())
+				{
+					QThread::msleep(10);
+				}
+
+				thread->deleteLater();
+			}
+		}
+
+		LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
+		LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
+		LTWindowsASIO::UnlockLTWindowsAsio();
+
+		latencyTestGridLayout->setEnabled(false);
+
+		SwapRowWidgetsLatencyTest(true);
+
+		for (int idx = 0; idx < m_LTRowWidgets.count(); idx++)
+		{
+			LTRowWidget* curRow = m_LTRowWidgets.at(idx);
+
+			if (curRow->enableCheckBox->isChecked())
+			{
+				LTSignalDetectThreadParameters params;
+				params.parent = this;
+				params.rowIdx = idx;
+				params.midiDevice = m_pWindowsMIDI;
+				params.audioDriver = driver;
+				params.midiOutDeviceId = curRow->midiOutComboBox->currentIndex();;
+				params.midiOutChannel = curRow->midiChannelSpinBox->value();
+				params.asioInputChannel = curRow->asioInputChannelComboBox->currentIndex();
+				params.testCount = testIterationsSpinBox->value();
+				params.testsPerSecond = testsPerSecondSpinBox->value();
+
+				curRow->progressBar->setMaximum(params.testCount);
+
+				LTSignalDetectThread* thread = new LTSignalDetectThread(params);
+				connect(thread, SIGNAL(IterationCompleted(LTSignalDetectThreadResult)), this, SLOT(onSignalDetectThreadIterationCompleted(LTSignalDetectThreadResult)));
+				connect(thread, SIGNAL(Completed(LTSignalDetectThreadResult)), this, SLOT(onSignalDetectThreadCompleted(LTSignalDetectThreadResult)));
+
+				m_SignalDetectThreads.append(thread);
+				m_iSignalDetectThreadsRemaining++;
+			}
+		}
+
+		if (m_SignalDetectThreads.count() > 0)
+		{
+			progressBar->setMaximum(m_SignalDetectThreads.count());
+			m_SignalDetectThreads.first()->start();
+		}
+		else
+		{
+			latencyTestGridLayout->setEnabled(true);
+			SwapRowWidgetsLatencyTest(false);
+
+			cancelButton->setEnabled(true);
+			measureLatencyButton->setText("Measure Latency");
+			progressBar->setEnabled(false);
 		}
 	}
+}
 
-    LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
-    LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
-    LTWindowsASIO::UnlockLTWindowsAsio();
-
-	latencyTestGridLayout->setEnabled(false);
-
-    for (int idx = 0; idx < m_LTRowWidgets.count(); idx++)
-    {
-        LTRowWidget* curRow = m_LTRowWidgets.at(idx);
-
-        if (curRow->enableCheckBox->isChecked())
-        {
-			LTSignalDetectThreadParameters params;
-			params.parent = this;
-			params.rowIdx = idx;
-			params.midiDevice = m_pWindowsMIDI;
-			params.audioDriver = driver;
-			params.midiOutDeviceId = curRow->midiOutComboBox->currentIndex();;
-			params.midiOutChannel = curRow->midiChannelSpinBox->value();
-			params.asioInputChannel = curRow->asioInputChannelComboBox->currentIndex();
-			params.testCount = testIterationsSpinBox->value();
-			params.testsPerSecond = testsPerSecondSpinBox->value();
-
-			LTSignalDetectThread* thread = new LTSignalDetectThread(params);
-			connect(thread, SIGNAL(Completed(LTSignalDetectThreadResult)), this, SLOT(onSignalDetectThreadCompleted(LTSignalDetectThreadResult)));
-
-			// Start them in parallel for the time being - make this user configurable later
-			thread->start();
-
-			m_SignalDetectThreads.append(thread);
-		}
-    }
-
-	if (m_SignalDetectThreads.count() <= 0)
+void LTMainWindow::SwapRowWidgetsLatencyTest(bool progressBar)
+{
+	for (int idx = 1; idx < latencyTestGridLayout->count() && (idx - 1) < m_LTRowWidgets.count(); idx++)
 	{
-		latencyTestGridLayout->setEnabled(true);
+		QLayoutItem *layoutItem = latencyTestGridLayout->itemAtPosition(idx, 1);
+		latencyTestGridLayout->removeItem(layoutItem);
+
+		LTRowWidget* curRow = m_LTRowWidgets.at(idx - 1);
+
+		curRow->progressBar->setValue(0);
+
+		if (progressBar && curRow->enableCheckBox->isChecked())
+		{
+			latencyTestGridLayout->addWidget(curRow->progressBar, idx, 1);
+			curRow->progressBar->show();
+			curRow->enableCheckBox->hide();
+		}
+		else
+		{
+			latencyTestGridLayout->addWidget(curRow->enableCheckBox, idx, 1);
+			curRow->progressBar->hide();
+			curRow->enableCheckBox->show();
+		}
+	}
+}
+
+void LTMainWindow::onSignalDetectThreadIterationCompleted(LTSignalDetectThreadResult result)
+{
+	if (result.signalDetected && result.rowIdx < m_LTRowWidgets.count())
+	{
+		LTRowWidget* curRow = m_LTRowWidgets.at(result.rowIdx);
+
+		curRow->midiLatencyLabel->setText(QString("%1ms").arg(result.midiLatency));
+		curRow->totalLatencyLabel->setText(QString("%1ms").arg(result.totalLatency));
+
+		curRow->progressBar->setValue(result.iterationsComplete);
 	}
 }
 
 void LTMainWindow::onSignalDetectThreadCompleted(LTSignalDetectThreadResult result)
 {
-	if (result.signalDetected && m_LTRowWidgets.count() < result.rowIdx)
+	if (result.signalDetected && result.rowIdx < m_LTRowWidgets.count())
 	{
 		LTRowWidget* curRow = m_LTRowWidgets.at(result.rowIdx);
 
@@ -234,7 +292,19 @@ void LTMainWindow::onSignalDetectThreadCompleted(LTSignalDetectThreadResult resu
 
 	m_iSignalDetectThreadsRemaining--;
 
-	if (m_iSignalDetectThreadsRemaining <= 0)
+	progressBar->setValue(progressBar->maximum() - m_iSignalDetectThreadsRemaining);
+
+	LTSignalDetectThread* thread = m_SignalDetectThreads.takeFirst();
+	if (thread != nullptr)
+	{
+		thread->deleteLater();
+	}
+
+	if (m_iSignalDetectThreadsRemaining > 0)
+	{
+		m_SignalDetectThreads.first()->start();
+	}
+	else
 	{
 		while (m_SignalDetectThreads.count() > 0)
 		{
@@ -246,8 +316,11 @@ void LTMainWindow::onSignalDetectThreadCompleted(LTSignalDetectThreadResult resu
 		}
 
 		latencyTestGridLayout->setEnabled(true);
+		SwapRowWidgetsLatencyTest(false);
 
-		cancelButton->setText("Panic");
+		cancelButton->setEnabled(true);
+		measureLatencyButton->setText("Measure Latency");
+		progressBar->setEnabled(false);
 	}
 }
 
@@ -273,6 +346,8 @@ void LTMainWindow::onAddLatencyTestPushed(void)
 
     int idx = m_LTRowWidgets.count();
 
+	newRow->hide();
+
     latencyTestGridLayout->addWidget(newRow->removeButton, idx, 0);
     latencyTestGridLayout->addWidget(newRow->enableCheckBox, idx, 1);
     latencyTestGridLayout->addWidget(newRow->midiOutComboBox, idx, 2);
@@ -286,6 +361,8 @@ void LTMainWindow::onAddLatencyTestPushed(void)
     latencyTestGridLayout->addItem(latencyTestVertSpacer, idx + 2, 1);
 
     UpdateLatencyTestAsio();
+
+	progressBar->setMaximum(m_LTRowWidgets.count());
 }
 
 void LTMainWindow::onRemoveLatencyTestPushed(int rowIdx)
@@ -299,6 +376,8 @@ void LTMainWindow::onRemoveLatencyTestPushed(int rowIdx)
     latencyTestGridLayout->removeWidget(curRow->midiLatencyLabel);
     latencyTestGridLayout->removeWidget(curRow->totalLatencyLabel);
     curRow->deleteLater();
+
+	progressBar->setMaximum(m_LTRowWidgets.count());
 }
 
 void LTMainWindow::UpdateLatencyTestAsio(void)
