@@ -164,15 +164,12 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
 		LTWindowsASIO::UnlockLTWindowsAsio();
 
 		m_pWindowsMIDI->SendMIDIPanic(-1);
-
-		progressBar->setEnabled(false);
 	}
 	else
 	{
 		cancelButton->setEnabled(false);
 		measureLatencyButton->setText("Cancel Test");
 
-		progressBar->setEnabled(true);
 		progressBar->setValue(0);
 
 		while (m_SignalDetectThreads.count() > 0)
@@ -237,7 +234,6 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
 
 			cancelButton->setEnabled(true);
 			measureLatencyButton->setText("Measure Latency");
-			progressBar->setEnabled(false);
 		}
 	}
 }
@@ -321,7 +317,6 @@ void LTMainWindow::onSignalDetectThreadCompleted(LTSignalDetectThreadResult resu
 
 		cancelButton->setEnabled(true);
 		measureLatencyButton->setText("Measure Latency");
-		progressBar->setEnabled(false);
 	}
 }
 
@@ -373,7 +368,17 @@ LTRowWidget* LTMainWindow::addLatencyTest(void)
 
 	updateLatencyTest(newRow);
 
-	progressBar->setMaximum(m_LTRowWidgets.count());
+	int numEnabledTests = 0;
+
+	for (int idx = 0; idx < m_LTRowWidgets.count(); idx++)
+	{
+		if (m_LTRowWidgets.at(idx)->enableCheckBox->isChecked())
+		{
+			numEnabledTests++;
+		}
+	}
+
+	progressBar->setMaximum(numEnabledTests);
 
 	return newRow;
 }
@@ -708,7 +713,21 @@ void LTMainWindow::loadLatencyTestSettings(QSettings *settings)
 	}
 	settings->endGroup();
 
-	if(m_LTRowWidgets.count() <= 0)
+	if (m_LTRowWidgets.count() > 0)
+	{
+		int numEnabledTests = 0;
+
+		for (int idx = 0; idx < m_LTRowWidgets.count(); idx++)
+		{
+			if (m_LTRowWidgets.at(idx)->enableCheckBox->isChecked())
+			{
+				numEnabledTests++;
+			}
+		}
+
+		progressBar->setMaximum(numEnabledTests);
+	}
+	else
 	{
 		onAddLatencyTestPushed();
 	}
