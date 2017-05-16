@@ -62,8 +62,9 @@ LTMainWindow::LTMainWindow(LTApplication* pApp, QDateTime startupTime)
     connect(addButton, SIGNAL(clicked()), this, SLOT(onAddLatencyTestPushed()));
     connect(cancelButton, SIGNAL(clicked()), this, SLOT(onLatencyTestCancelPushed()));
     connect(saveSettingsButton, SIGNAL(clicked()), this, SLOT(onSaveSettingsPushed()));
-    
 
+	connect(&m_removeLatencyTestButtonSignalMapper, SIGNAL(mapped(int)), this, SLOT(onRemoveLatencyTestPushed(int)), Qt::DirectConnection);
+  
     initializeMidiInPanel();
     initializeMidiOutPanel();
     initializeAsioPanel();
@@ -137,7 +138,7 @@ void LTMainWindow::onAsioCurrentIndexChanged(int index)
 
     LTWindowsASIO::UnlockLTWindowsAsio();
 
-    UpdateLatencyTestAsio();
+    updateLatencyTests();
 }
 
 
@@ -194,7 +195,7 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
 
 		latencyTestGridLayout->setEnabled(false);
 
-		SwapRowWidgetsLatencyTest(true);
+		swapRowWidgetsLatencyTest(true);
 
 		for (int idx = 0; idx < m_LTRowWidgets.count(); idx++)
 		{
@@ -232,7 +233,7 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
 		else
 		{
 			latencyTestGridLayout->setEnabled(true);
-			SwapRowWidgetsLatencyTest(false);
+			swapRowWidgetsLatencyTest(false);
 
 			cancelButton->setEnabled(true);
 			measureLatencyButton->setText("Measure Latency");
@@ -241,7 +242,7 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
 	}
 }
 
-void LTMainWindow::SwapRowWidgetsLatencyTest(bool progressBar)
+void LTMainWindow::swapRowWidgetsLatencyTest(bool progressBar)
 {
 	for (int idx = 1; idx < latencyTestGridLayout->count() && (idx - 1) < m_LTRowWidgets.count(); idx++)
 	{
@@ -316,7 +317,7 @@ void LTMainWindow::onSignalDetectThreadCompleted(LTSignalDetectThreadResult resu
 		}
 
 		latencyTestGridLayout->setEnabled(true);
-		SwapRowWidgetsLatencyTest(false);
+		swapRowWidgetsLatencyTest(false);
 
 		cancelButton->setEnabled(true);
 		measureLatencyButton->setText("Measure Latency");
@@ -325,6 +326,11 @@ void LTMainWindow::onSignalDetectThreadCompleted(LTSignalDetectThreadResult resu
 }
 
 void LTMainWindow::onAddLatencyTestPushed(void)
+{
+	addLatencyTest();
+}
+
+LTRowWidget* LTMainWindow::addLatencyTest(void)
 {
     LTRowWidget* newRow = new LTRowWidget();
     m_LTRowWidgets.append(newRow);
@@ -360,55 +366,77 @@ void LTMainWindow::onAddLatencyTestPushed(void)
     latencyTestGridLayout->addWidget(addButton, idx + 1, 0);
     latencyTestGridLayout->addItem(latencyTestVertSpacer, idx + 2, 1);
 
-    UpdateLatencyTestAsio();
+	m_removeLatencyTestButtonSignalMapper.removeMappings(newRow->removeButton);
+	m_removeLatencyTestButtonSignalMapper.setMapping(newRow->removeButton, idx - 1);
+
+	connect(newRow->removeButton, SIGNAL(clicked()), &m_removeLatencyTestButtonSignalMapper, SLOT(map()), Qt::DirectConnection);
+
+	updateLatencyTest(newRow);
 
 	progressBar->setMaximum(m_LTRowWidgets.count());
+
+	return newRow;
 }
 
 void LTMainWindow::onRemoveLatencyTestPushed(int rowIdx)
 {
-    LTRowWidget* curRow = m_LTRowWidgets.takeAt(rowIdx);
-    latencyTestGridLayout->removeWidget(curRow->enableCheckBox);
-    latencyTestGridLayout->removeWidget(curRow->midiOutComboBox);
-    latencyTestGridLayout->removeWidget(curRow->midiChannelSpinBox);
-    latencyTestGridLayout->removeWidget(curRow->asioDriverLabel);
-    latencyTestGridLayout->removeWidget(curRow->asioInputChannelComboBox);
-    latencyTestGridLayout->removeWidget(curRow->midiLatencyLabel);
-    latencyTestGridLayout->removeWidget(curRow->totalLatencyLabel);
-    curRow->deleteLater();
+	if(m_LTRowWidgets.count() > rowIdx)
+	{
+		LTRowWidget* curRow = m_LTRowWidgets.takeAt(rowIdx);
+		m_removeLatencyTestButtonSignalMapper.removeMappings(curRow->removeButton);
+
+		latencyTestGridLayout->removeWidget(curRow->removeButton);
+		latencyTestGridLayout->removeWidget(curRow->progressBar);
+		latencyTestGridLayout->removeWidget(curRow->enableCheckBox);
+		latencyTestGridLayout->removeWidget(curRow->midiOutComboBox);
+		latencyTestGridLayout->removeWidget(curRow->midiChannelSpinBox);
+		latencyTestGridLayout->removeWidget(curRow->asioDriverLabel);
+		latencyTestGridLayout->removeWidget(curRow->asioInputChannelComboBox);
+		latencyTestGridLayout->removeWidget(curRow->midiLatencyLabel);
+		latencyTestGridLayout->removeWidget(curRow->totalLatencyLabel);
+		curRow->deleteLater();
+	}
+
+	for (int idx = 0; idx < m_LTRowWidgets.count(); idx++)
+	{
+		LTRowWidget* curRow = m_LTRowWidgets.at(idx);
+
+		m_removeLatencyTestButtonSignalMapper.removeMappings(curRow->removeButton);
+		m_removeLatencyTestButtonSignalMapper.setMapping(curRow->removeButton, idx);
+	}
 
 	progressBar->setMaximum(m_LTRowWidgets.count());
 }
 
-void LTMainWindow::UpdateLatencyTestAsio(void)
+void LTMainWindow::updateLatencyTests(void)
+{
+	for (int idx = 0; idx < m_LTRowWidgets.count(); idx++)
+	{
+		LTRowWidget* curRow = m_LTRowWidgets.at(idx);
+
+		updateLatencyTest(curRow);
+	}
+}
+
+void LTMainWindow::updateLatencyTest(LTRowWidget* row)
 {
     LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
     LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
 
     if (ltWindowsAsio == nullptr)
     {
-        for (int idx = 0; idx < m_LTRowWidgets.count(); idx++)
-        {
-            LTRowWidget* curRow = m_LTRowWidgets.at(idx);
-
-            curRow->asioDriverLabel->setText("No ASIO Driver Selected");
-            curRow->enableCheckBox->setEnabled(false);
-            curRow->asioInputChannelComboBox->setEnabled(false);
-            curRow->asioInputChannelComboBox->clear();
-        }
+		row->asioDriverLabel->setText("No ASIO Driver Selected");
+		row->enableCheckBox->setEnabled(false);
+		row->asioInputChannelComboBox->setEnabled(false);
+		row->asioInputChannelComboBox->clear();
     }
     else
     {
-        for (int idx = 0; idx < m_LTRowWidgets.count(); idx++)
-        {
-            LTRowWidget* curRow = m_LTRowWidgets.at(idx);
+		row->asioDriverLabel->setText(driver->GetName());
+		row->enableCheckBox->setEnabled(true);
+		row->asioInputChannelComboBox->setEnabled(true);
 
-            curRow->asioDriverLabel->setText(driver->GetName());
-            curRow->enableCheckBox->setEnabled(true);
-            curRow->asioInputChannelComboBox->setEnabled(true);
-
-            curRow->asioInputChannelComboBox->clear();
-        }
+		row->asioInputChannelComboBox->clear();
 
         int numInputChannels = driver->GetNumInputChannels();
 
@@ -416,14 +444,9 @@ void LTMainWindow::UpdateLatencyTestAsio(void)
         {
             QString channelName = driver->GetChannelName(channelIdx);
 
-            for (int idx = 0; idx < m_LTRowWidgets.count(); idx++)
-            {
-                LTRowWidget* curRow = m_LTRowWidgets.at(idx);
-                curRow->asioInputChannelComboBox->addItem(channelName);
-            }
+			row->asioInputChannelComboBox->addItem(channelName);
         }
     }
-
 
     LTWindowsASIO::UnlockLTWindowsAsio();
 }
@@ -545,106 +568,150 @@ void LTMainWindow::initializeAsioPanel(void)
 
 void LTMainWindow::initializeLatencyTestPanel(void)
 {
-    onAddLatencyTestPushed();
+	while (m_LTRowWidgets.count() > 0)
+	{
+		onRemoveLatencyTestPushed(0);
+	}
 }
 
 void LTMainWindow::loadSettings(QSettings *settings, bool reset)
 {
+	bool immediateSave = false;
+
     settings->beginGroup("Misc");
-    float savedSettingsVersion = 0.0f;
-    savedSettingsVersion = settings->value("SettingsVersion", 0.0f).value<float>();
-
-    if(savedSettingsVersion == 0.0f)
-    {
-        settings->endGroup();
-        settings->beginGroup("Common");
-        savedSettingsVersion = settings->value("SettingsVersion", 0.0f).value<float>();
-        settings->endGroup();
-        settings->beginGroup("Misc");
-    }
-
-    float savedSettingsMajorVersion = floorf(savedSettingsVersion);
-    float ltSettingsMajorVersion = floorf(sLTSettingsVersion);
-    bool immediateSave = false;
-
-    if(savedSettingsMajorVersion < 1.0f)
-    {
-        settings->clear();
-        immediateSave = true;
-    }
-    else if(ltSettingsMajorVersion > savedSettingsMajorVersion)
-    {
-        // CHRISNOTE: Our saved settings are now no longer supported
-        // Right now we will simply nuke the settings, but in the future we should migrate them
-        //LTError::warningDialog("Your current settings file is from an older version of LatencyTest and is no longer supported due to product enhancements in this version.\n\nThe settings file will now be cleared and recreated automatically.\n\nAny previously saved changes will be lost and LatencyTest will be reverted to its default settings.\n", false, false);
-        settings->clear();
-        immediateSave = true;
-    }
-
-	if(settings->contains("size"))
 	{
-        QSize savedSize = settings->value("size").toSize();
-        // CHRISNOTE: Enforce a minimum value to avoid erroneous restoration
-        if(savedSize.height() >= 64 && savedSize.width() >= 64)
-        {
-            resize(savedSize);
-        }
-	}
+		float savedSettingsVersion = 0.0f;
+		savedSettingsVersion = settings->value("SettingsVersion", 0.0f).value<float>();
 
-	if(settings->contains("position"))
-	{
-        QPoint savedPosition = settings->value("position").toPoint();
-        if(QApplication::desktop()->geometry().contains(savedPosition))
-        {
-		    move(savedPosition);
-        }
-	}
-
-	if(settings->contains("State"))
-	{
-		restoreState(settings->value("State").value<QByteArray>(), sLTSettingsVersion);
-	}
-
-	if(settings->contains("Maximized"))
-	{
-		if(settings->value("Maximized").value<bool>())
+		if(savedSettingsVersion == 0.0f)
 		{
-			showMaximized();
+			settings->endGroup();
+			settings->beginGroup("Common");
+			savedSettingsVersion = settings->value("SettingsVersion", 0.0f).value<float>();
+			settings->endGroup();
+			settings->beginGroup("Misc");
 		}
+
+		float savedSettingsMajorVersion = floorf(savedSettingsVersion);
+		float ltSettingsMajorVersion = floorf(sLTSettingsVersion);
+
+		if(savedSettingsMajorVersion < 1.0f)
+		{
+			settings->clear();
+			immediateSave = true;
+		}
+		else if(ltSettingsMajorVersion > savedSettingsMajorVersion)
+		{
+			// CHRISNOTE: Our saved settings are now no longer supported
+			// Right now we will simply nuke the settings, but in the future we should migrate them
+			//LTError::warningDialog("Your current settings file is from an older version of LatencyTest and is no longer supported due to product enhancements in this version.\n\nThe settings file will now be cleared and recreated automatically.\n\nAny previously saved changes will be lost and LatencyTest will be reverted to its default settings.\n", false, false);
+			settings->clear();
+			immediateSave = true;
+		}
+
+		if(settings->contains("size"))
+		{
+			QSize savedSize = settings->value("size").toSize();
+			// CHRISNOTE: Enforce a minimum value to avoid erroneous restoration
+			if(savedSize.height() >= 64 && savedSize.width() >= 64)
+			{
+				resize(savedSize);
+			}
+		}
+
+		if(settings->contains("position"))
+		{
+			QPoint savedPosition = settings->value("position").toPoint();
+			if(QApplication::desktop()->geometry().contains(savedPosition))
+			{
+				move(savedPosition);
+			}
+		}
+
+		if(settings->contains("State"))
+		{
+			restoreState(settings->value("State").value<QByteArray>(), sLTSettingsVersion);
+		}
+
+		if(settings->contains("Maximized"))
+		{
+			if(settings->value("Maximized").value<bool>())
+			{
+				showMaximized();
+			}
+		}
+
+		QDir defaultDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
+
+		QString defaultPath = defaultDir.absolutePath();
+
+		m_sStartingLoadPath = settings->value("LoadPath", defaultPath).value<QString>();
 	}
-
-    QDir defaultDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
-
-    QString defaultPath = defaultDir.absolutePath();
-
-    m_sStartingLoadPath = settings->value("LoadPath", defaultPath).value<QString>();
-
     settings->endGroup();
 
     settings->beginGroup("Asio");
+	{
+		if (settings->contains("DeviceName"))
+		{
+			for (int idx = 0; idx < asioDeviceListComboBox->count(); idx++)
+			{
+				if (QString::compare(asioDeviceListComboBox->itemText(idx), settings->value("DeviceName").toString()) == 0)
+				{
+					if(asioDeviceListComboBox->currentIndex() != idx)
+					{ 
+						asioDeviceListComboBox->setCurrentIndex(idx);
+					}
 
-    if (settings->contains("DeviceName"))
-    {
-        for (int idx = 0; idx < asioDeviceListComboBox->count(); idx++)
-        {
-            if (QString::compare(asioDeviceListComboBox->itemText(idx), settings->value("DeviceName").toString()) == 0)
-            {
-                if(asioDeviceListComboBox->currentIndex() != idx)
-                { 
-                    asioDeviceListComboBox->setCurrentIndex(idx);
-                }
-
-                break;
-            }
-        }
-    }
-
+					break;
+				}
+			}
+		}
+	}
     settings->endGroup();
+
+	loadLatencyTestSettings(settings);
 
     if(immediateSave)
     {
         saveSettings(settings);
     }
+}
+
+void LTMainWindow::loadLatencyTestSettings(QSettings *settings)
+{
+	initializeLatencyTestPanel();
+
+	settings->beginGroup("LatencyTest");
+	{
+		testIterationsSpinBox->setValue(settings->value("TestCount", testIterationsSpinBox->value()).toInt());
+		testsPerSecondSpinBox->setValue(settings->value("TestsPerSecond", testsPerSecondSpinBox->value()).toInt());
+
+		settings->beginGroup("Tests");
+		{
+			QStringList tests = settings->childGroups();
+
+			for (int idx = 0; idx < tests.count(); idx++)
+			{
+				LTRowWidget* newRow = addLatencyTest();
+
+				settings->beginGroup(tests.at(idx));
+				{
+					newRow->enableCheckBox->setChecked(settings->value("Enabled", newRow->enableCheckBox->isChecked()).toBool());
+					newRow->midiOutComboBox->setCurrentText(settings->value("MidiOutDevice", newRow->midiOutComboBox->currentText()).toString());
+					newRow->midiChannelSpinBox->setValue(settings->value("MidiOutChannel", newRow->midiChannelSpinBox->value()).toInt());
+					newRow->asioInputChannelComboBox->setCurrentIndex(settings->value("AsioInputChannel", newRow->asioInputChannelComboBox->currentIndex()).toInt());
+				}
+				settings->endGroup();
+			}
+		}
+		settings->endGroup();
+	}
+	settings->endGroup();
+
+	if(m_LTRowWidgets.count() <= 0)
+	{
+		onAddLatencyTestPushed();
+	}
 }
 
 void LTMainWindow::setLoadComplete(void)
@@ -655,36 +722,69 @@ void LTMainWindow::setLoadComplete(void)
 void LTMainWindow::saveSettings(QSettings *settings)
 {
     settings->beginGroup("Misc");
+	{
+		settings->setValue("LTVersion", sLTVersion);
+		settings->setValue("SettingsVersion", sLTSettingsVersion);
 
-    settings->setValue("LTVersion", sLTVersion);
-    settings->setValue("SettingsVersion", sLTSettingsVersion);
+		settings->setValue("size", size());
 
-	settings->setValue("size", size());
+		QPoint currentPosition = pos();
 
-    QPoint currentPosition = pos();
+		if(currentPosition.x() < 0)
+		{
+			currentPosition.setX(0);
+		}
 
-    if(currentPosition.x() < 0)
-    {
-        currentPosition.setX(0);
-    }
+		if(currentPosition.y() < 0)
+		{
+			currentPosition.setY(0);
+		}
 
-    if(currentPosition.y() < 0)
-    {
-        currentPosition.setY(0);
-    }
+		settings->setValue("position", currentPosition);
+		settings->setValue("maximized", isMaximized());
 
-    settings->setValue("position", currentPosition);
-	settings->setValue("maximized", isMaximized());
-
-    settings->setValue("LoadPath", getLoadPath());
-
-    settings->endGroup();
+		settings->setValue("LoadPath", getLoadPath());
+	}
+	settings->endGroup();
 
     settings->beginGroup("Asio");
-    settings->setValue("DeviceName", asioDeviceListComboBox->currentText());
+	{
+		settings->setValue("DeviceName", asioDeviceListComboBox->currentText());
+	}
     settings->endGroup();
+
+	saveLatencyTestSettings(settings);
 }
 
+void LTMainWindow::saveLatencyTestSettings(QSettings *settings)
+{
+	settings->beginGroup("LatencyTest");
+	{
+		settings->setValue("TestCount", testIterationsSpinBox->value());
+		settings->setValue("TestsPerSecond", testsPerSecondSpinBox->value());
+
+		settings->beginGroup("Tests");
+		{
+			settings->remove("");
+
+			for (int idx = 0; idx < m_LTRowWidgets.count(); idx++)
+			{
+				LTRowWidget* curRow = m_LTRowWidgets.at(idx);
+
+				settings->beginGroup(QString("%1").arg(idx));
+				{
+					settings->setValue("Enabled", curRow->enableCheckBox->isChecked());
+					settings->setValue("MidiOutDevice", curRow->midiOutComboBox->currentText());
+					settings->setValue("MidiOutChannel", curRow->midiChannelSpinBox->value());
+					settings->setValue("AsioInputChannel", curRow->asioInputChannelComboBox->currentIndex());
+				}
+				settings->endGroup();
+			}
+		}
+		settings->endGroup();
+	}
+	settings->endGroup();
+}
 
 void LTMainWindow::updateStatusBar(void)
 {

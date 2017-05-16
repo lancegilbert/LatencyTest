@@ -40,13 +40,19 @@ public:
     bool getLoadComplete(void) { return m_bInitialPrefsLoadComplete; }
 
 private:
-    void UpdateLatencyTestAsio(void);
-	void SwapRowWidgetsLatencyTest(bool progressBar);
+    void updateLatencyTests(void);
+	void updateLatencyTest(LTRowWidget* row);
+	void swapRowWidgetsLatencyTest(bool progressBar);
 
     void initializeMidiInPanel(void);
     void initializeMidiOutPanel(void);
     void initializeAsioPanel(void);
     void initializeLatencyTestPanel(void);
+
+	void loadLatencyTestSettings(QSettings *settings);
+	void saveLatencyTestSettings(QSettings *settings);
+
+	LTRowWidget* addLatencyTest(void);
 
 public slots:
     void onClickHelpAbout(void);
@@ -60,7 +66,7 @@ public slots:
     void onLatencyTestCancelPushed(void);
     void onSaveSettingsPushed(void);
 
-    void onAddLatencyTestPushed(void);
+	void onAddLatencyTestPushed(void);
     void onRemoveLatencyTestPushed(int rowIdx);
 
 public:

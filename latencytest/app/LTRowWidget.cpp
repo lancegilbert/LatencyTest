@@ -1,4 +1,5 @@
 #include "LTRowWidget.h"
+#include <QUuid>
 
 LTRowWidget::LTRowWidget(QWidget *parent /* = nullptr */)
     : QWidget(parent)
