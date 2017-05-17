@@ -46,7 +46,8 @@ public:
     virtual ~LTWindowsASIODriver(void);
 
     virtual bool Initialize(int driverID, QString name);
-    virtual bool Load(void);
+    virtual bool Load(LTWindowsASIO* driver);
+	void Unload(void);
 
     uint64_t GetTime(void);
     QString GetChannelName(int index);
@@ -63,6 +64,8 @@ public:
     int64_t WaitForSignalDetected(void);
 
     bool DetectNoiseFloor(int inputChannel);
+
+	bool IsLoaded(void) { return m_bLoaded; }
 
 private:
     void AsioCallbackBufferSwitch_Internal(long index, ASIOBool processNow);
@@ -97,7 +100,7 @@ private:
     QList<double> m_NoiseFloors;
     QElapsedTimer m_NoiseFloorDetectionTimer;
 
-    bool m_bLoaded;
+    volatile bool m_bLoaded;
 };
 
 // This is taken directly from RTAudio.h until time is taken to write a new implementation

@@ -58,9 +58,10 @@ LTMainWindow::LTMainWindow(LTApplication* pApp, QDateTime startupTime)
     connect(midiInRefreshButton, SIGNAL(clicked()), this, SLOT(onRefreshMIDIInPushed()));
     connect(midiOutRefreshButton, SIGNAL(clicked()), this, SLOT(onRefreshMIDIOutPushed()));
     connect(asioDeviceListComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onAsioCurrentIndexChanged(int)));
+	connect(latencyTestAudioDeviceComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onLatencyTestAudioDeviceChanged(int)));
     connect(measureLatencyButton, SIGNAL(clicked()), this, SLOT(onLatencyTestMeasurePushed()));
     connect(addButton, SIGNAL(clicked()), this, SLOT(onAddLatencyTestPushed()));
-    connect(cancelButton, SIGNAL(clicked()), this, SLOT(onLatencyTestCancelPushed()));
+    connect(panicButton, SIGNAL(clicked()), this, SLOT(onLatencyTestCancelPushed()));
     connect(saveSettingsButton, SIGNAL(clicked()), this, SLOT(onSaveSettingsPushed()));
 
 	connect(&m_removeLatencyTestButtonSignalMapper, SIGNAL(mapped(int)), this, SLOT(onRemoveLatencyTestPushed(int)), Qt::DirectConnection);
@@ -72,7 +73,7 @@ LTMainWindow::LTMainWindow(LTApplication* pApp, QDateTime startupTime)
 
     loadSettings(m_pApplication->getSettings(), false);
 
-    cancelButton->setText("Panic");
+    panicButton->setText("Panic");
 }
 
 LTMainWindow::~LTMainWindow(void)
@@ -94,51 +95,64 @@ void LTMainWindow::onRefreshMIDIOutPushed(void)
     initializeMidiOutPanel();
 }
 
+void LTMainWindow::onLatencyTestAudioDeviceChanged(int index)
+{
+	LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
+
+	latencyTestControls->setEnabled(false);
+
+	int numDrivers = ltWindowsAsio->GetNumDrivers();
+
+	if (numDrivers <= index)
+	{
+		LTWindowsASIO::UnlockLTWindowsAsio();
+		return;
+	}
+
+	LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
+
+	if (driver == nullptr)
+	{
+		LTWindowsASIO::UnlockLTWindowsAsio();
+		return;
+	}
+
+	if (!driver->Initialize(index, ltWindowsAsio->GetDriverName(index)))
+	{
+		LTWindowsASIO::UnlockLTWindowsAsio();
+		return;
+	}
+
+	if (!driver->Load(ltWindowsAsio))
+	{
+		LTWindowsASIO::UnlockLTWindowsAsio();
+		return;
+	}
+
+	inputChannelsValueLabel->setText(tr("%1").arg(driver->GetNumInputChannels()));
+	outputChannelsValueLabel->setText(tr("%1").arg(driver->GetNumOutputChannels()));
+	minSizeValueLabel->setText(tr("%1").arg(driver->GetMinSize()));
+	maxSizeValueLabel->setText(tr("%1").arg(driver->GetMaxSize()));
+	preferredSizeValueLabel->setText(tr("%1").arg(driver->GetPreferredSize()));
+	granularityValueLabel->setText(tr("%1").arg(driver->GetGranularity()));
+	inputLatencyValueLabel->setText(tr("%1").arg(driver->GetInputLatency()));
+	outputLatencyValueLabel->setText(tr("%1").arg(driver->GetOutputLatency()));
+	sampleRateValueLabel->setText(tr("%1").arg(driver->GetSampleRate()));
+
+	LTWindowsASIO::UnlockLTWindowsAsio();
+
+	updateLatencyTests();
+
+	bool signalsBlocked = asioDeviceListComboBox->blockSignals(true);
+	asioDeviceListComboBox->setCurrentIndex(index);
+	asioDeviceListComboBox->blockSignals(signalsBlocked);
+
+	latencyTestControls->setEnabled(true);
+}
+
 void LTMainWindow::onAsioCurrentIndexChanged(int index)
 {
-    LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
-
-    int numDrivers = ltWindowsAsio->GetNumDrivers();
-
-    if (numDrivers <= index)
-    {
-        LTWindowsASIO::UnlockLTWindowsAsio();
-        return;
-    }
-
-    LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
-
-    if (driver == nullptr)
-    {
-        LTWindowsASIO::UnlockLTWindowsAsio();
-        return;
-    }
-
-    if (!driver->Initialize(index, ltWindowsAsio->GetDriverName(index)))
-    {
-        LTWindowsASIO::UnlockLTWindowsAsio();
-        return;
-    }
-
-    if (!driver->Load())
-    {
-        LTWindowsASIO::UnlockLTWindowsAsio();
-        return;
-    }
-
-    inputChannelsValueLabel->setText(tr("%1").arg(driver->GetNumInputChannels()));
-    outputChannelsValueLabel->setText(tr("%1").arg(driver->GetNumOutputChannels()));
-    minSizeValueLabel->setText(tr("%1").arg(driver->GetMinSize()));
-    maxSizeValueLabel->setText(tr("%1").arg(driver->GetMaxSize()));
-    preferredSizeValueLabel->setText(tr("%1").arg(driver->GetPreferredSize()));
-    granularityValueLabel->setText(tr("%1").arg(driver->GetGranularity()));
-    inputLatencyValueLabel->setText(tr("%1").arg(driver->GetInputLatency()));
-    outputLatencyValueLabel->setText(tr("%1").arg(driver->GetOutputLatency()));
-    sampleRateValueLabel->setText(tr("%1").arg(driver->GetSampleRate()));
-
-    LTWindowsASIO::UnlockLTWindowsAsio();
-
-    updateLatencyTests();
+	latencyTestAudioDeviceComboBox->setCurrentIndex(index);
 }
 
 
@@ -167,7 +181,7 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
 	}
 	else
 	{
-		cancelButton->setEnabled(false);
+		panicButton->setEnabled(false);
 		measureLatencyButton->setText("Cancel Test");
 
 		progressBar->setValue(0);
@@ -190,7 +204,7 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
 		LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
 		LTWindowsASIO::UnlockLTWindowsAsio();
 
-		latencyTestGridLayout->setEnabled(false);
+		latencyTestListWidget->setEnabled(false);
 
 		swapRowWidgetsLatencyTest(true);
 
@@ -229,10 +243,10 @@ void LTMainWindow::onLatencyTestMeasurePushed(void)
 		}
 		else
 		{
-			latencyTestGridLayout->setEnabled(true);
+			latencyTestListWidget->setEnabled(true);
 			swapRowWidgetsLatencyTest(false);
 
-			cancelButton->setEnabled(true);
+			panicButton->setEnabled(true);
 			measureLatencyButton->setText("Measure Latency");
 		}
 	}
@@ -312,10 +326,10 @@ void LTMainWindow::onSignalDetectThreadCompleted(LTSignalDetectThreadResult resu
 			}
 		}
 
-		latencyTestGridLayout->setEnabled(true);
+		latencyTestListWidget->setEnabled(true);
 		swapRowWidgetsLatencyTest(false);
 
-		cancelButton->setEnabled(true);
+		panicButton->setEnabled(true);
 		measureLatencyButton->setText("Measure Latency");
 	}
 }
@@ -557,16 +571,20 @@ void LTMainWindow::initializeAsioPanel(void)
     int numDrivers = ltWindowsAsio->GetNumDrivers();
 
     asioDeviceListComboBox->clear();
+	latencyTestAudioDeviceComboBox->clear();
 
     // Signals for this widget must be blocked otherwise onAsioCurrentIndexChanged will be called immediately resulting in a deadlock
-    bool sigsBlocked = asioDeviceListComboBox->blockSignals(true);
+    bool asioDeviceListComboBoxSigsBlocked = asioDeviceListComboBox->blockSignals(true);
+	bool latencyTestAudioDeviceComboBoxSigsBlocked = latencyTestAudioDeviceComboBox->blockSignals(true);
 
     for (int idx = 0; idx < numDrivers; idx++)
     {
         asioDeviceListComboBox->addItem(ltWindowsAsio->GetDriverName(idx));
+		latencyTestAudioDeviceComboBox->addItem(ltWindowsAsio->GetDriverName(idx));
     }
 
-    asioDeviceListComboBox->blockSignals(sigsBlocked);
+    asioDeviceListComboBox->blockSignals(asioDeviceListComboBoxSigsBlocked);
+	latencyTestAudioDeviceComboBox->blockSignals(latencyTestAudioDeviceComboBoxSigsBlocked);
 
     LTWindowsASIO::UnlockLTWindowsAsio();
 }
@@ -654,26 +672,6 @@ void LTMainWindow::loadSettings(QSettings *settings, bool reset)
 	}
     settings->endGroup();
 
-    settings->beginGroup("Asio");
-	{
-		if (settings->contains("DeviceName"))
-		{
-			for (int idx = 0; idx < asioDeviceListComboBox->count(); idx++)
-			{
-				if (QString::compare(asioDeviceListComboBox->itemText(idx), settings->value("DeviceName").toString()) == 0)
-				{
-					if(asioDeviceListComboBox->currentIndex() != idx)
-					{ 
-						asioDeviceListComboBox->setCurrentIndex(idx);
-					}
-
-					break;
-				}
-			}
-		}
-	}
-    settings->endGroup();
-
 	loadLatencyTestSettings(settings);
 
     if(immediateSave)
@@ -690,6 +688,22 @@ void LTMainWindow::loadLatencyTestSettings(QSettings *settings)
 	{
 		testIterationsSpinBox->setValue(settings->value("TestCount", testIterationsSpinBox->value()).toInt());
 		testsPerSecondSpinBox->setValue(settings->value("TestsPerSecond", testsPerSecondSpinBox->value()).toInt());
+
+		if (settings->contains("DeviceName"))
+		{
+			for (int idx = 0; idx < latencyTestAudioDeviceComboBox->count(); idx++)
+			{
+				if (QString::compare(latencyTestAudioDeviceComboBox->itemText(idx), settings->value("DeviceName").toString()) == 0)
+				{
+					if (latencyTestAudioDeviceComboBox->currentIndex() != idx)
+					{
+						latencyTestAudioDeviceComboBox->setCurrentIndex(idx);
+					}
+
+					break;
+				}
+			}
+		}
 
 		settings->beginGroup("Tests");
 		{
@@ -766,12 +780,6 @@ void LTMainWindow::saveSettings(QSettings *settings)
 	}
 	settings->endGroup();
 
-    settings->beginGroup("Asio");
-	{
-		settings->setValue("DeviceName", asioDeviceListComboBox->currentText());
-	}
-    settings->endGroup();
-
 	saveLatencyTestSettings(settings);
 }
 
@@ -781,6 +789,7 @@ void LTMainWindow::saveLatencyTestSettings(QSettings *settings)
 	{
 		settings->setValue("TestCount", testIterationsSpinBox->value());
 		settings->setValue("TestsPerSecond", testsPerSecondSpinBox->value());
+		settings->setValue("DeviceName", latencyTestAudioDeviceComboBox->currentText());
 
 		settings->beginGroup("Tests");
 		{

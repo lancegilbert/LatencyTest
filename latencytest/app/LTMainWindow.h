@@ -59,7 +59,8 @@ public slots:
 
     void onRefreshMIDIInPushed(void);
     void onRefreshMIDIOutPushed(void);
-    void onAsioCurrentIndexChanged(int index);
+    void onLatencyTestAudioDeviceChanged(int index);
+	void onAsioCurrentIndexChanged(int index);
     void onLatencyTestMeasurePushed(void);
 	void onSignalDetectThreadIterationCompleted(LTSignalDetectThreadResult result);
 	void onSignalDetectThreadCompleted(LTSignalDetectThreadResult result);

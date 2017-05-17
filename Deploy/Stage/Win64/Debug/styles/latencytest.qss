@@ -25,21 +25,20 @@ QWidget:item:selected
     background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #969696, stop: 1 #757575);
 }
 
-
 QWidget:disabled
 {
-    color: #505050;
-    background-color: #323232;
-}
-
-QAbstractItemView
-{
-    background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #4d4d4d, stop: 0.1 #646464, stop: 1 #5d5d5d);
+    color: #e1e1e1;
+    background-color: #2b2b2b;
 }
 
 QWidget:focus
 {
     /*border: 2px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #969696, stop: 1 #757575);*/
+}
+
+QAbstractItemView
+{
+    background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #4d4d4d, stop: 0.1 #646464, stop: 1 #5d5d5d);
 }
 
 /*--------------------------------------Input Fields---------------------------*/
@@ -137,6 +136,9 @@ QComboBox:disabled{
     padding: 2px;
     padding-left: 5px;
     padding-right: 5px;
+
+    color: #505050;
+    background-color: #323232;
 }
 
 QComboBox:hover{
@@ -340,8 +342,9 @@ QSpinBox, QDoubleSpinBox {
 }
 
 QSpinBox:disabled, QDoubleSpinBox:disabled {
-	background: #323232;
 	border-color: #505050;
+  color: #505050;
+  background-color: #323232;
 }
 
   QSpinBox::up-button, QDoubleSpinBox::up-button {
@@ -535,8 +538,6 @@ QProgressBar
     border: 2px solid grey;
     border-radius: 5px;
     text-align: center;
-	
-	
 }
 
 QProgressBar::chunk
@@ -597,49 +598,53 @@ QToolButton::checked:pressed{
 /*------------------------------Plus & Minus icon 3d preview-------------------*/
 /*-----------------------------------------------------------------------------*/
 QToolButton#addButton {
-   color: #b1b1b1;
+    color: #b1b1b1;
     background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646);
-	border-width: 1px;
+    border-width: 1px;
     border-color: #1e1e1e;
     border-style: solid;
     border-radius: 3;
     padding: 1px;
-	image:url(%RUNPATH%/styles/images/plus_button.png);
-
+    image:url(%RUNPATH%/styles/images/plus_button.png);
 }
 
 QToolButton#addButton::hover{
     background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #808080, stop:1 #656565);
-	image:url(%RUNPATH%/styles/images/plus_button.png);
+    image:url(%RUNPATH%/styles/images/plus_button.png);
 }
 
+QToolButton#addButton:disabled{
+    image:url(%RUNPATH%/styles/images/plus_button_disabled.png);
+}
 
 QToolButton#addButton::pressed{
     background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #2d2d2d, stop: 0.1 #2b2b2b, stop: 0.5 #292929, stop: 0.9 #282828, stop: 1 #252525);
-	image:url(%RUNPATH%/styles/images/plus_button.png);
+    image:url(%RUNPATH%/styles/images/plus_button.png);
 }
 
 QToolButton#removeButton {
-   color: #b1b1b1;
+    color: #b1b1b1;
     background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646);
-	border-width: 1px;
+    border-width: 1px;
     border-color: #1e1e1e;
     border-style: solid;
     border-radius: 3;
     padding: 1px;
-	image:url(%RUNPATH%/styles/images/minus_button.png);
-
+    image:url(%RUNPATH%/styles/images/minus_button.png);
 }
 
 QToolButton#removeButton::hover{
     background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #808080, stop:1 #656565);
-	image:url(%RUNPATH%/styles/images/minus_button.png);
+    image:url(%RUNPATH%/styles/images/minus_button.png);
 }
 
+QToolButton#addButton:disabled{
+    image:url(%RUNPATH%/styles/images/minus_button_disabled.png);
+}
 
 QToolButton#removeButton::pressed{
     background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #2d2d2d, stop: 0.1 #2b2b2b, stop: 0.5 #292929, stop: 0.9 #282828, stop: 1 #252525);
-	image:url(%RUNPATH%/styles/images/minus_button.png);
+    image:url(%RUNPATH%/styles/images/minus_button.png);
 }
 
 /*--------------------------------------Sliders--------------------------------*/
@@ -730,11 +735,6 @@ margin-bottom: -2px;
 border-radius: 4px;
 }*/
 
-QWidget:disabled
-{
-    color: #505050;
-    background-color: #323232;
-}
 /*--------------------------------------Sliders--------------------------------*/
 /*-----------------------------------------------------------------------------*/
 
@@ -907,7 +907,8 @@ QCheckBox::indicator{
 }
 QCheckBox:disabled
 {
-color: #414141;
+    color: #414141;
+    background-color: #323232;
 }
 
 QCheckBox::indicator:checked

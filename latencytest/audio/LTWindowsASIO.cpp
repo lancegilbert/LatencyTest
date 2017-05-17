@@ -7,6 +7,8 @@ const double twoRaisedTo32 = 4294967296.;
 #define ASIO64toDouble(a)  ((a).lo + (a).hi * twoRaisedTo32)
 
 extern IASIO *theAsioDriver;
+extern AsioDrivers *asioDrivers;
+bool loadAsioDriver(char *name);
 
 QMutex LTWindowsASIO::s_LTWindowsAsioMutex;
 LTWindowsASIO* LTWindowsASIO::s_pLTWindowsAsio = nullptr;
@@ -51,7 +53,7 @@ void LTWindowsASIO::Initialize(void)
 
     m_DriverNames.clear();
 
-    AsioDrivers* asioDrivers = new AsioDrivers();
+    AsioDrivers* ltAsioDrivers = new AsioDrivers();
 
     char* asioDriverNames[ASIO_MAX_DRIVERS];
 
@@ -61,7 +63,7 @@ void LTWindowsASIO::Initialize(void)
         asioDriverNames[idx][0] = '\0';
     }
 
-    asioDrivers->getDriverNames(asioDriverNames, ASIO_MAX_DRIVERS);
+    ltAsioDrivers->getDriverNames(asioDriverNames, ASIO_MAX_DRIVERS);
 
     for (int idx = 0; idx < ASIO_MAX_DRIVERS; idx++)
     {
@@ -73,12 +75,12 @@ void LTWindowsASIO::Initialize(void)
         delete[] asioDriverNames[idx];
     }
 
-    m_pDriver = new LTWindowsASIODriver(asioDrivers);
+    m_pDriver = new LTWindowsASIODriver(ltAsioDrivers);
 }
 
-LTWindowsASIODriver::LTWindowsASIODriver(AsioDrivers* asioDrivers)
+LTWindowsASIODriver::LTWindowsASIODriver(AsioDrivers* ltAsioDrivers)
     : LTAudioDriver()
-    , m_pAsioDrivers(asioDrivers)
+    , m_pAsioDrivers(ltAsioDrivers)
     , m_pBufferInfos(nullptr)
     , m_pChannelInfos(nullptr)
     , m_bLoaded(false)
@@ -98,23 +100,7 @@ LTWindowsASIODriver::LTWindowsASIODriver(AsioDrivers* asioDrivers)
 
 LTWindowsASIODriver::~LTWindowsASIODriver(void)
 {
-    delete[] m_pBufferInfos;
-    delete[] m_pChannelInfos;
-
-    if (m_pAsioDrivers != nullptr)
-    {
-        delete m_pAsioDrivers;
-    }
-
-    if (m_pInputSamples != nullptr)
-    {
-        delete[] m_pInputSamples;
-    }
-
-    if (m_pOutputSamples != nullptr)
-    {
-        delete[] m_pOutputSamples;
-    }
+	Unload();
 }
 
 bool LTWindowsASIODriver::Initialize(int DriverID, QString name)
@@ -122,13 +108,11 @@ bool LTWindowsASIODriver::Initialize(int DriverID, QString name)
     return LTAudioDriver::Initialize(DriverID, name);
 }
 
-bool LTWindowsASIODriver::Load(void)
+bool LTWindowsASIODriver::Load(LTWindowsASIO* driver)
 {
-    m_pAsioDrivers->removeCurrentDriver();
+	Unload();
 
-    delete[] m_pBufferInfos;
-
-    m_bLoaded = m_pAsioDrivers->loadDriver(GetName().toLatin1().data());
+    m_bLoaded = loadAsioDriver(GetName().toLatin1().data());
 
     if (!m_bLoaded)
     {
@@ -151,6 +135,8 @@ bool LTWindowsASIODriver::Load(void)
     if (ASIOGetChannels(&inputChannels, &outputChannels) != ASE_OK)
     {
         m_bLoaded = false;
+
+		ASIOExit();
 
         return m_bLoaded;
     }
@@ -187,6 +173,8 @@ bool LTWindowsASIODriver::Load(void)
     {
         m_bLoaded = false;
 
+		ASIOExit();
+
         return m_bLoaded;
     }
 
@@ -195,6 +183,8 @@ bool LTWindowsASIODriver::Load(void)
     if (ASIOGetSampleRate(&sampleRate) != ASE_OK)
     {
         m_bLoaded = false;
+
+		ASIOExit();
 
         return m_bLoaded;
     }
@@ -217,6 +207,9 @@ bool LTWindowsASIODriver::Load(void)
     if (ASIOCreateBuffers(m_pBufferInfos, totalChannels, preferredSize, &asioCallbacks) != ASE_OK)
     {
         m_bLoaded = false;
+
+		ASIOExit();
+
         return m_bLoaded;
     }
 
@@ -228,6 +221,11 @@ bool LTWindowsASIODriver::Load(void)
         if (ASIOGetChannelInfo(&m_pChannelInfos[idx]) != ASE_OK)
         {
             m_bLoaded = false;
+
+			ASIODisposeBuffers();
+
+			ASIOExit();
+
             return m_bLoaded;
         }
     }
@@ -239,6 +237,10 @@ bool LTWindowsASIODriver::Load(void)
     if (ASIOGetLatencies(&inputLatency, &outputLatency) != ASE_OK)
     {
         m_bLoaded = false;
+
+		ASIODisposeBuffers();
+
+		ASIOExit();
 
         return m_bLoaded;
     }
@@ -252,10 +254,57 @@ bool LTWindowsASIODriver::Load(void)
     {
         m_bLoaded = false;
 
+		ASIODisposeBuffers();
+
+		ASIOExit();
+
         return m_bLoaded;
     }
 
     return m_bLoaded;
+}
+
+void LTWindowsASIODriver::Unload(void)
+{
+	if(m_bLoaded)
+	{
+		ASIOStop();
+
+		ASIODisposeBuffers();
+
+		ASIOExit();
+
+		if (m_pBufferInfos != nullptr)
+		{
+			delete[] m_pBufferInfos;
+			m_pBufferInfos = nullptr;
+		}
+
+		if (m_pChannelInfos != nullptr)
+		{
+			delete[] m_pChannelInfos;
+			m_pChannelInfos = nullptr;
+		}
+
+		if (m_pInputSamples != nullptr)
+		{
+			delete[] m_pInputSamples;
+			m_pInputSamples = nullptr;
+		}
+
+		if (m_pOutputSamples != nullptr)
+		{
+			delete[] m_pOutputSamples;
+			m_pOutputSamples = nullptr;
+		}
+
+		m_bLoaded = false;
+
+		// Unlock and re-lock in order to give the callback a moment to process and get clear of the buffers we are about to destroy
+		LTWindowsASIO::UnlockLTWindowsAsio();
+		QThread::msleep(100);
+		LTWindowsASIO::GetLockedLTWindowsAsio();
+	}
 }
 
 uint64_t LTWindowsASIODriver::GetTime(void)
@@ -466,9 +515,12 @@ void LTWindowsASIODriver::AsioCallbackBufferSwitch(long index, ASIOBool processN
     LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
     LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
 
-    driver->AsioCallbackBufferSwitch_Internal(index, processNow);
+	if (driver != nullptr && driver->IsLoaded())
+	{
+		driver->AsioCallbackBufferSwitch_Internal(index, processNow);
+	}
 
-    LTWindowsASIO::UnlockLTWindowsAsio();
+	LTWindowsASIO::UnlockLTWindowsAsio();
 }
 
 void LTWindowsASIODriver::AsioCallbackSampleRateDidChange(ASIOSampleRate sampleRate)
@@ -544,11 +596,18 @@ ASIOTime* LTWindowsASIODriver::AsioCallbackbufferSwitchTimeInfo(ASIOTime* timeIn
     LTWindowsASIO* ltWindowsAsio = LTWindowsASIO::GetLockedLTWindowsAsio();
     LTWindowsASIODriver* driver = ltWindowsAsio->GetDriver();
 
-    ASIOTime* retTime = driver->AsioCallbackbufferSwitchTimeInfo_Internal(timeInfo, index, processNow);
+	if(driver != nullptr && driver->IsLoaded())
+	{
+		ASIOTime* retTime = driver->AsioCallbackbufferSwitchTimeInfo_Internal(timeInfo, index, processNow);
 
-    LTWindowsASIO::UnlockLTWindowsAsio();
+		LTWindowsASIO::UnlockLTWindowsAsio();
 
-    return retTime;
+		return retTime;
+	}
+	
+	LTWindowsASIO::UnlockLTWindowsAsio();
+
+	return nullptr;
 }
 
 // The following two functions are taken from RTAudio with minor modifications
